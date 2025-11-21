@@ -1,0 +1,20 @@
+Mesh World Cup Predictor
+
+- Rules - 
+-- Scoring --
+5 points for a perfectly predicted result at the end of 90 minutes or extra time
+3 points for the correct aggregate score 
+2 points for predicting the correct winner or a draw
+
+If a fixture is decided by a penalty shoot-out then you get a bonus 2 points for predicting the winner
+
+-- How it works --
+1. The deadline for submission is midnight the day before the fixture
+2. Input your predictions against each of the fixtures and click the "Submit" button. Only once you have submitted will your prediction be registered
+3. For knockout stages there will be an additional shoot-out winner button to select your choice should the fixture be decided by penalties
+4. The leaderboard shows the top 5 point scorers
+5. Click the Show Full Table to see the full detailed leaderboard. You can also filter to see different leagues you are part of
+
+
+Enjoy the competition :D
+ 
