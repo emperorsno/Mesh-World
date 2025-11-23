@@ -26,7 +26,7 @@ import {
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
-import { Activity, ChevronRight, X, Trophy, CheckCircle2, AlertCircle, Lock, LogOut, Mail, User, Key, ArrowLeft, Settings, Plus, Trash2, Calendar, RefreshCw, Shield, Volume2, VolumeX, Eye, EyeOff, Edit2, Camera, Sun, Moon, Users, Filter, Menu, Zap, HelpCircle, FileText, Upload, Download, ClipboardList, Hash, Coins } from 'lucide-react';
+import { Activity, ChevronRight, X, Trophy, CheckCircle2, AlertCircle, Lock, LogOut, Mail, User, Key, ArrowLeft, Settings, Plus, Trash2, Calendar, RefreshCw, Shield, Volume2, VolumeX, Eye, EyeOff, Edit2, Camera, Sun, Moon, Users, Filter, Menu, Zap, HelpCircle, FileText, Upload, Download } from 'lucide-react';
 
 // --- FIREBASE SETUP ---
 const firebaseConfig = {
@@ -49,11 +49,11 @@ const ADMIN_EMAIL = 'gripper28@gmail.com';
 const TOURNAMENT_YEAR = 2026;
 
 const STAGES = [
-  { id: 'general', name: 'General', dates: 'Various', status: 'FUTURE', type: 'group' },
+  { id: 'general', name: 'General', dates: 'Various', status: 'FUTURE', type: 'group' }, 
   { id: 'md1', name: 'Group Stage - Matchday 1', dates: 'June 11–17, 2026', status: 'ACTIVE', type: 'group' },
   { id: 'md2', name: 'Group Stage - Matchday 2', dates: 'June 18–23, 2026', status: 'FUTURE', type: 'group' },
   { id: 'md3', name: 'Group Stage - Matchday 3', dates: 'June 24–27, 2026', status: 'FUTURE', type: 'group' },
-  { id: 'playoffs', name: 'Play-offs', dates: 'TBD', status: 'FUTURE', type: 'knockout' },
+  { id: 'playoffs', name: 'Play-offs', dates: 'TBD', status: 'FUTURE', type: 'knockout' }, 
   { id: 'r32', name: 'Round of 32', dates: 'June 28 – July 3, 2026', status: 'FUTURE', type: 'knockout' },
   { id: 'r16', name: 'Round of 16', dates: 'July 4–7, 2026', status: 'FUTURE', type: 'knockout' },
   { id: 'qf', name: 'Quarterfinals', dates: 'July 9–11, 2026', status: 'FUTURE', type: 'knockout' },
@@ -87,8 +87,11 @@ const isPastDeadline = (dateStr) => {
 const sortFixturesByDate = (a, b) => {
     const dateA = new Date(`${a.date} ${a.time || '00:00'}`).getTime();
     const dateB = new Date(`${b.date} ${b.time || '00:00'}`).getTime();
+    
+    // If dates are invalid, put them at the end
     if (isNaN(dateA)) return 1;
     if (isNaN(dateB)) return -1;
+    
     return dateA - dateB;
 };
 
@@ -533,19 +536,8 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
 
 const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }) => {
   const [filter, setFilter] = useState('GLOBAL');
-  const [viewMode, setViewMode] = useState('counts'); // 'counts' or 'points'
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
-  const [scoringRules, setScoringRules] = useState(DEFAULT_SCORING);
-
-  // Fetch scoring rules on mount to ensure calculations are accurate
-  useEffect(() => {
-      const loadRules = async () => {
-          const docSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'scoring'));
-          if (docSnap.exists()) setScoringRules(docSnap.data());
-      };
-      loadRules();
-  }, []);
 
   const filteredLeaderboard = filter === 'GLOBAL' 
     ? leaderboard 
@@ -553,20 +545,6 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
         const league = leagues.find(l => l.id === filter);
         return league && league.members.includes(u.id);
       });
-
-  const getValue = (user, key) => {
-      const count = user.stats?.[key] || 0;
-      if (viewMode === 'counts') return count;
-      
-      // Logic to calculate total points for that category
-      switch(key) {
-          case 'perfect': return count * (scoringRules.perfect || 0);
-          case 'aggregate': return count * (scoringRules.aggregate || 0);
-          case 'outcome': return count * (scoringRules.outcome || 0);
-          case 'missed': return 0; // Miss always 0
-          default: return 0;
-      }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-2 bg-black/90 backdrop-blur-md">
@@ -585,39 +563,23 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
             <button onClick={onClose} className={`${isContrast ? 'text-black hover:text-gray-600' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
           </div>
           
-          {/* Filters Row */}
-          <div className="flex gap-2">
-              <div className="relative flex-1">
-                <div className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isContrast ? 'text-black' : 'text-slate-500'}`}>
-                  <Filter size={14} />
-                </div>
-                <select 
-                  value={filter} 
-                  onChange={(e) => setFilter(e.target.value)}
-                  className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm border appearance-none ${
-                    isContrast ? 'bg-white border-2 border-black text-black font-bold' :
-                    isDark ? 'bg-slate-900 border-slate-600 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
-                  }`}
-                >
-                  <option value="GLOBAL">Global (All Players)</option>
-                  {leagues.length > 0 && <optgroup label="My Leagues">
-                    {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </optgroup>}
-                </select>
-              </div>
-              
-              {/* View Mode Toggle */}
-              <button 
-                 onClick={() => setViewMode(viewMode === 'counts' ? 'points' : 'counts')}
-                 className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap ${
-                    isContrast 
-                       ? 'bg-black text-white border-2 border-black' 
-                       : isDark ? 'bg-slate-800 text-emerald-400 border border-slate-600 hover:bg-slate-700' : 'bg-gray-100 text-emerald-600 border border-gray-300 hover:bg-gray-200'
-                 }`}
-              >
-                 {viewMode === 'counts' ? <Hash size={14}/> : <Coins size={14}/>}
-                 {viewMode === 'counts' ? 'Show Points' : 'Show Counts'}
-              </button>
+          <div className="relative">
+            <div className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isContrast ? 'text-black' : 'text-slate-500'}`}>
+              <Filter size={14} />
+            </div>
+            <select 
+              value={filter} 
+              onChange={(e) => setFilter(e.target.value)}
+              className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm border appearance-none ${
+                isContrast ? 'bg-white border-2 border-black text-black font-bold' :
+                isDark ? 'bg-slate-900 border-slate-600 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
+              }`}
+            >
+              <option value="GLOBAL">Global (All Players)</option>
+              {leagues.length > 0 && <optgroup label="My Leagues">
+                {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </optgroup>}
+            </select>
           </div>
         </div>
         
@@ -657,10 +619,10 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
                     <Avatar url={user.avatarUrl} name={user.name} size="sm" />
                     <span className="whitespace-nowrap">{user.name}</span>
                   </td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{getValue(user, 'perfect')}</td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{getValue(user, 'aggregate')}</td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{getValue(user, 'outcome')}</td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-500'}`}>{getValue(user, 'missed')}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{user.stats?.perfect || 0}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{user.stats?.aggregate || 0}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{user.stats?.outcome || 0}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-500'}`}>{user.stats?.missed || 0}</td>
                   <td className={`p-3 text-right font-bold text-sm ${isContrast ? 'text-black' : 'text-emerald-500'}`}>{user.totalPoints}</td>
                 </tr>
               ))}
@@ -886,9 +848,7 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
   const [activeTab, setActiveTab] = useState('fixtures'); // 'fixtures' or 'leagues' or 'content'
   const [leagues, setLeagues] = useState([]);
   const [importText, setImportText] = useState('');
-  const [resultsText, setResultsText] = useState('');
   const [parsedMatches, setParsedMatches] = useState([]);
-  const [parsedResults, setParsedResults] = useState([]);
   const [helpText, setHelpText] = useState('');
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
@@ -934,9 +894,9 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
   };
 
   const parseImport = () => {
-     const rows = importText.split(/\r?\n/);
+     const rows = importText.split('\n');
      const matches = rows.map(row => {
-         const cols = row.split(/\t|  +/); 
+         const cols = row.split(/\t|  +/); // Tab or 2+ spaces
          if (cols.length >= 4) return { teamA: cols[0].trim(), teamB: cols[1].trim(), date: cols[2].trim(), time: cols[3].trim() };
          return null;
      }).filter(m => m);
@@ -965,62 +925,6 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
     setProcessing(false);
   };
 
-  // --- BULK RESULT IMPORT LOGIC ---
-  const parseResults = () => {
-    const rows = resultsText.split(/\r?\n/);
-    const results = [];
-    
-    rows.forEach(row => {
-        const cleanRow = row.trim();
-        if (!cleanRow) return;
-
-        // Regex attempts to match "TeamA Score - Score TeamB" or variations
-        // Example: England 2-1 USA, or England 2 - 1 USA, or England 2 1 USA
-        const match = cleanRow.match(/^(.+?)\s+(\d+)\s*[-:–]?\s*(\d+)\s+(.+)$/);
-        if (match) {
-            const teamA = match[1].trim();
-            const scoreA = match[2];
-            const scoreB = match[3];
-            const teamB = match[4].trim();
-            
-            // Find matching fixture in DB (simple name matching)
-            const fixture = fixtures.find(f => 
-                (f.teamA.toLowerCase().includes(teamA.toLowerCase()) || teamA.toLowerCase().includes(f.teamA.toLowerCase())) &&
-                (f.teamB.toLowerCase().includes(teamB.toLowerCase()) || teamB.toLowerCase().includes(f.teamB.toLowerCase()))
-            );
-
-            if (fixture) {
-                results.push({
-                    match: fixture,
-                    home: scoreA,
-                    away: scoreB,
-                    text: row
-                });
-            }
-        }
-    });
-    
-    if (results.length === 0) {
-        alert("No matches found. Ensure format is: TeamA Score-Score TeamB");
-    }
-    setParsedResults(results);
-  };
-
-  const confirmResults = async () => {
-    setProcessing(true);
-    try {
-        // Must process sequentially to ensure leaderboard integrity and avoid race conditions on 'user' docs
-        for (const res of parsedResults) {
-            await handleUpdateScore(res.match, res.home, res.away, null); // Default no penalties for bulk
-        }
-        setResultsText('');
-        setParsedResults([]);
-        alert(`Updated scores for ${parsedResults.length} matches!`);
-    } catch (e) { alert(e.message); }
-    setProcessing(false);
-  };
-
-
   const handleDeleteMatch = async (id) => {
     if (confirm("Delete match?")) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'fixtures', id));
@@ -1033,33 +937,114 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
     }
   };
 
+  // --- Export Data ---
+  const handleExportData = async () => {
+    setProcessing(true);
+    try {
+      // 1. Fetch ALL needed data
+      const [usersSnap, fixturesSnap, predsSnap] = await Promise.all([
+        getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'users')),
+        getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'fixtures')),
+        getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'predictions'))
+      ]);
+
+      const users = {};
+      usersSnap.forEach(d => users[d.id] = d.data().name);
+
+      const fixtures = {};
+      fixturesSnap.forEach(d => fixtures[d.id] = d.data());
+
+      // 2. Build CSV Content
+      const header = ["MatchID", "Stage", "HomeTeam", "AwayTeam", "Date", "Time", "PlayerName", "PredHome", "PredAway", "PredPens", "Points", "Type"];
+      const rows = [header.join(",")];
+
+      predsSnap.forEach(doc => {
+        const p = doc.data();
+        const match = fixtures[p.matchId];
+        const playerName = users[p.userId] || "Unknown";
+
+        if (match) {
+          const row = [
+            p.matchId,
+            match.stageId,
+            match.teamA,
+            match.teamB,
+            match.date,
+            match.time,
+            playerName,
+            p.prediction.home,
+            p.prediction.away,
+            p.prediction.penaltyWinner || "",
+            p.points || 0,
+            p.type || ""
+          ];
+          // Escape commas in data if necessary (basic CSV handling)
+          rows.push(row.map(cell => `"${cell}"`).join(","));
+        }
+      });
+
+      // 3. Download
+      const csvContent = "data:text/csv;charset=utf-8," + rows.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "mesh_predictor_backup.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (e) {
+      alert("Export failed: " + e.message);
+    }
+    setProcessing(false);
+  };
+
   // --- Recalculate All Points ---
   const handleRecalculateAll = async () => {
     if (!confirm("WARNING: This will reset all scores to 0 and recalculate them based on current completed matches. Continue?")) return;
     setProcessing(true);
     try {
       const batch = writeBatch(db);
+
+      // 1. Fetch all Users & Reset local state
       const usersSnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'users'));
       const userMap = {};
       usersSnapshot.forEach(doc => {
+         // Initialize with 0 points
          userMap[doc.id] = { 
            ref: doc.ref, 
-           data: { ...doc.data(), totalPoints: 0, stats: { perfect: 0, aggregate: 0, outcome: 0, missed: 0 } } 
+           data: { 
+             ...doc.data(), 
+             totalPoints: 0, 
+             stats: { perfect: 0, aggregate: 0, outcome: 0, missed: 0 } 
+           } 
          };
       });
+
+      // 2. Fetch all Completed Fixtures
       const fixturesSnapshot = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'fixtures'), where('status', '==', 'COMPLETED')));
+      
+      // 3. Fetch all Predictions
       const predsSnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'predictions'));
 
+      // 4. Loop through predictions
       predsSnapshot.forEach(predDoc => {
           const pData = predDoc.data();
           const matchDoc = fixturesSnapshot.docs.find(f => f.id === pData.matchId);
+          
+          // Only score if match is completed
           if (matchDoc) {
               const result = matchDoc.data().result;
               const calculation = calculatePoints(pData.prediction, result, scoringRules);
+              
+              // Update prediction with correct points (in case rules changed)
               batch.update(predDoc.ref, { points: calculation.points, type: calculation.type });
+
+              // Add to User Total
               if (userMap[pData.userId]) {
                   const u = userMap[pData.userId].data;
                   u.totalPoints += calculation.points;
+                  
                   if (calculation.type.includes('Perfect')) u.stats.perfect++;
                   else if (calculation.type.includes('Aggregate')) u.stats.aggregate++;
                   else if (calculation.type.includes('Outcome')) u.stats.outcome++;
@@ -1067,50 +1052,81 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
               }
           }
       });
-      Object.values(userMap).forEach(({ ref, data }) => batch.update(ref, { totalPoints: data.totalPoints, stats: data.stats }));
+
+      // 5. Commit User Updates
+      Object.values(userMap).forEach(({ ref, data }) => {
+          batch.update(ref, { totalPoints: data.totalPoints, stats: data.stats });
+      });
+
       await batch.commit();
       alert("Leaderboard fully recalculated!");
-    } catch (e) { console.error(e); alert("Error recalculating: " + e.message); } 
-    finally { setProcessing(false); }
+    } catch (e) {
+      console.error(e);
+      alert("Error recalculating: " + e.message);
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  // --- CORE LOGIC: Update Score (Abstracted to return promise) ---
-  const updateScoreLogic = async (match, home, away, penaltyWinner) => {
-      const newResult = { home: home ?? null, away: away ?? null, penaltyWinner: penaltyWinner ?? null };
-      const batch = writeBatch(db);
+  // --- Update Score ---
+  const handleUpdateScore = async (match, home, away, penaltyWinner) => {
+    if (processing) return;
+    setProcessing(true);
+
+    try {
+      const newResult = { 
+        home: home ?? null, 
+        away: away ?? null, 
+        penaltyWinner: penaltyWinner ?? null 
+      };
       
+      const batch = writeBatch(db);
+
       // 1. Update Match
       const matchRef = doc(db, 'artifacts', appId, 'public', 'data', 'fixtures', match.id);
       batch.update(matchRef, { result: newResult, status: 'COMPLETED' });
 
-      // 2. Get Preds & Users (We must fetch fresh to ensure sequence correctness in bulk loop)
-      const predsQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'predictions'), where('matchId', '==', match.id));
+      // 2. Get Preds & Users
+      const predsQuery = query(
+        collection(db, 'artifacts', appId, 'public', 'data', 'predictions'),
+        where('matchId', '==', match.id)
+      );
       const predsSnapshot = await getDocs(predsQuery);
+
       const usersSnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'users'));
-      
       const userMap = {};
       usersSnapshot.forEach(doc => { userMap[doc.id] = { ref: doc.ref, data: doc.data() }; });
 
       // 3. Loop Preds
       predsSnapshot.forEach((predDoc) => {
         const pData = predDoc.data();
+        
         const oldPoints = pData.points || 0;
         const oldType = pData.type || 'Miss';
+
         const calculation = calculatePoints(pData.prediction, newResult, scoringRules);
         
+        // Update Prediction
         batch.update(predDoc.ref, { points: calculation.points, type: calculation.type });
 
+        // Update User
         if (userMap[pData.userId]) {
           const u = userMap[pData.userId].data;
+          
+          // Subtract old, Add new
           u.totalPoints = (u.totalPoints || 0) - oldPoints + calculation.points;
+          
           if (!u.stats) u.stats = { perfect: 0, aggregate: 0, outcome: 0, missed: 0 };
           
+          // Decrement old stat
           if (oldPoints > 0 || oldType !== 'Miss') { 
              if (oldType.includes('Perfect')) u.stats.perfect = Math.max(0, (u.stats.perfect || 0) - 1);
              else if (oldType.includes('Aggregate')) u.stats.aggregate = Math.max(0, (u.stats.aggregate || 0) - 1);
              else if (oldType.includes('Outcome')) u.stats.outcome = Math.max(0, (u.stats.outcome || 0) - 1);
              else u.stats.missed = Math.max(0, (u.stats.missed || 0) - 1);
           }
+
+          // Increment new stat
           if (calculation.type.includes('Perfect')) u.stats.perfect = (u.stats.perfect || 0) + 1;
           else if (calculation.type.includes('Aggregate')) u.stats.aggregate = (u.stats.aggregate || 0) + 1;
           else if (calculation.type.includes('Outcome')) u.stats.outcome = (u.stats.outcome || 0) + 1;
@@ -1118,32 +1134,46 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
         }
       });
 
+      // 4. Commit Users
       Object.values(userMap).forEach(({ ref, data }) => {
         batch.update(ref, { totalPoints: data.totalPoints, stats: data.stats || {} });
       });
 
       await batch.commit();
-  };
-
-  const handleUpdateScore = async (match, home, away, penaltyWinner) => {
-    if (processing) return;
-    setProcessing(true);
-    try {
-      await updateScoreLogic(match, home, away, penaltyWinner);
       alert("Score updated & Leaderboard adjusted!");
-    } catch (e) { console.error(e); alert("Error: " + e.message); } 
-    finally { setProcessing(false); }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating score: " + e.message);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const activeFixtures = fixtures.filter(f => f.stageId === selectedStageId);
+  const isKnockout = STAGES.find(s => s.id === selectedStageId)?.type === 'knockout';
 
   return (
     <div className="pb-20">
       <header className={`p-4 flex justify-between items-center sticky top-0 z-20 border-b ${isContrast ? 'bg-white border-black border-b-2' : isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
         <h2 className="text-amber-500 font-bold flex items-center gap-2"><Settings size={18} /> Admin Console</h2>
         <div className="flex items-center gap-3">
-             <button onClick={handleRecalculateAll} disabled={processing} className={`text-xs px-3 py-1.5 rounded border transition-colors flex items-center gap-2 ${isContrast ? 'bg-white border-black text-black hover:bg-gray-200' : isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-red-900 hover:text-red-200' : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-red-100 hover:text-red-600'}`} title="Reset & Recalculate All Scores">
-               <RefreshCw size={14} className={processing ? 'animate-spin' : ''}/> {processing ? '...' : 'Recalc'}
+             <button 
+               onClick={handleExportData}
+               disabled={processing}
+               className={`text-xs px-3 py-1.5 rounded border transition-colors flex items-center gap-2 ${isContrast ? 'bg-white border-black text-black hover:bg-gray-200' : isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-blue-900 hover:text-blue-200' : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-blue-100 hover:text-blue-600'}`}
+               title="Download Backup CSV"
+             >
+               <Download size={14} className={processing ? 'animate-spin' : ''}/>
+               {processing ? '...' : 'Export'}
+             </button>
+             <button 
+               onClick={handleRecalculateAll}
+               disabled={processing}
+               className={`text-xs px-3 py-1.5 rounded border transition-colors flex items-center gap-2 ${isContrast ? 'bg-white border-black text-black hover:bg-gray-200' : isDark ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-red-900 hover:text-red-200' : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-red-100 hover:text-red-600'}`}
+               title="Reset & Recalculate All Scores"
+             >
+               <RefreshCw size={14} className={processing ? 'animate-spin' : ''}/>
+               {processing ? '...' : 'Recalc'}
              </button>
              <button onClick={onClose} className={`text-xs font-bold ${isContrast ? 'text-black' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>Exit</button>
         </div>
@@ -1159,6 +1189,25 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
 
         {activeTab === 'fixtures' && (
           <>
+            {/* Scoring Rules */}
+            <div className={`rounded-xl border overflow-hidden ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <button onClick={() => setShowRules(!showRules)} className={`w-full p-3 flex justify-between items-center text-xs font-bold hover:bg-opacity-80 ${isContrast ? 'text-black hover:bg-gray-100' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                <span>Configure Scoring Rules</span>
+                <ChevronRight size={16} className={`transform transition-transform ${showRules ? 'rotate-90' : ''}`} />
+              </button>
+              {showRules && (
+                <div className={`p-4 grid grid-cols-2 gap-4 border-t ${isContrast ? 'bg-white border-black' : isDark ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    {Object.keys(DEFAULT_SCORING).map(key => (
+                      <div key={key} className="space-y-1">
+                        <label className={`text-[10px] uppercase font-bold ${isContrast ? 'text-black' : isDark ? 'text-slate-500' : 'text-gray-500'}`}>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
+                        <input type="number" className={`w-full border rounded p-2 text-sm ${isContrast ? 'bg-white border-black text-black border-2' : isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} value={scoringRules[key] || 0} onChange={(e) => setScoringRules({...scoringRules, [key]: parseInt(e.target.value)})} />
+                      </div>
+                    ))}
+                    <button onClick={handleSaveRules} className={`col-span-2 font-bold py-2 rounded text-xs mt-2 ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-600 text-white'}`}>Save Rules</button>
+                </div>
+              )}
+            </div>
+
             {/* Stage Selector */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {STAGES.map(stage => (
@@ -1180,25 +1229,22 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
                   <button onClick={handleAddMatch} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-slate-700 hover:bg-emerald-600 hover:text-white text-slate-300'}`}>Add to Schedule</button>
                 </div>
 
-                {/* Bulk Fixture Import */}
+                {/* Bulk Import */}
                 <div className={`pt-4 border-t ${isContrast ? 'border-black' : isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isContrast ? 'text-black' : 'text-blue-500'}`}><Upload size={14}/> Bulk Import Fixtures</h4>
-                    <textarea className={`w-full h-16 rounded p-2 text-xs mb-2 border ${isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`} placeholder="Paste: TeamA  TeamB  Date  Time" value={importText} onChange={e => setImportText(e.target.value)} />
+                    <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isContrast ? 'text-black' : 'text-blue-500'}`}><Upload size={14}/> Bulk Import (Excel/Sheets)</h4>
+                    <textarea 
+                       className={`w-full h-24 rounded p-2 text-xs mb-2 border ${isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
+                       placeholder="Paste rows here: Team A   Team B   Date   Time"
+                       value={importText}
+                       onChange={e => setImportText(e.target.value)}
+                    />
                     {parsedMatches.length > 0 ? (
-                       <button onClick={confirmImport} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>Confirm {parsedMatches.length} Fixtures</button>
+                       <div className="mb-2">
+                          <div className={`text-xs mb-2 ${isContrast ? 'text-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>{parsedMatches.length} matches found</div>
+                          <button onClick={confirmImport} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-blue-600 text-white hover:bg-blue-500'}`}>Confirm Import</button>
+                       </div>
                     ) : (
-                      <button onClick={parseImport} disabled={!importText} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm disabled:opacity-50 ${isContrast ? 'bg-white text-black border-2 border-black hover:bg-gray-200' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Parse Fixtures</button>
-                    )}
-                </div>
-
-                {/* Bulk RESULT Import */}
-                <div className={`pt-4 border-t ${isContrast ? 'border-black' : isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isContrast ? 'text-black' : 'text-green-500'}`}><ClipboardList size={14}/> Bulk Result Update</h4>
-                    <textarea className={`w-full h-16 rounded p-2 text-xs mb-2 border ${isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`} placeholder="Paste: TeamA 2-1 TeamB" value={resultsText} onChange={e => setResultsText(e.target.value)} />
-                    {parsedResults.length > 0 ? (
-                       <button onClick={confirmResults} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-green-600 text-white hover:bg-green-500'}`}>Confirm {parsedResults.length} Results</button>
-                    ) : (
-                      <button onClick={parseResults} disabled={!resultsText} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm disabled:opacity-50 ${isContrast ? 'bg-white text-black border-2 border-black hover:bg-gray-200' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Parse Results</button>
+                      <button onClick={parseImport} disabled={!importText} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm disabled:opacity-50 ${isContrast ? 'bg-white text-black border-2 border-black hover:bg-gray-200' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>Parse Matches</button>
                     )}
                 </div>
             </div>
@@ -1248,7 +1294,7 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
         )}
 
         {activeTab === 'content' && (
-           <div className={`p-4 rounded-xl border space-y-4 ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+           <div className={`p-4 rounded-xl border ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
               <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isContrast ? 'text-black' : 'text-emerald-500'}`}><FileText size={14}/> Edit Help & Rules</h4>
               <textarea 
                  className={`w-full h-64 rounded p-3 text-sm mb-3 border ${isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'}`}
@@ -1257,20 +1303,6 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
                  placeholder="Enter app rules here..."
               />
               <button onClick={handleSaveHelp} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`}>Save Content</button>
-              
-              {/* Scoring Rules inside Content Tab (Optional Duplicate, but requested in previous turns to be editable) */}
-              <div className="pt-4 border-t border-gray-700">
-                  <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isContrast ? 'text-black' : 'text-emerald-500'}`}>Scoring Rules</h4>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {Object.keys(DEFAULT_SCORING).map(key => (
-                      <div key={key} className="space-y-1">
-                        <label className={`text-[10px] uppercase font-bold ${isContrast ? 'text-black' : isDark ? 'text-slate-500' : 'text-gray-500'}`}>{key.replace(/([A-Z])/g, ' $1').trim()}</label>
-                        <input type="number" className={`w-full border rounded p-2 text-sm ${isContrast ? 'bg-white border-black text-black border-2' : isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} value={scoringRules[key] || 0} onChange={(e) => setScoringRules({...scoringRules, [key]: parseInt(e.target.value)})} />
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={handleSaveRules} className={`w-full font-bold py-2 rounded-lg transition-colors text-sm ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`}>Save Scoring Rules</button>
-              </div>
            </div>
         )}
       </div>
@@ -1294,7 +1326,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile Menu State
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
 
@@ -1304,20 +1336,12 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
 
     const unsubFixtures = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'fixtures'), orderBy('timestamp')), (snap) => {
         const sortedList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        sortedList.sort(sortFixturesByDate); 
+        sortedList.sort(sortFixturesByDate); // Sort chronologically
         setFixtures(sortedList);
     });
 
     const unsubUsers = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'users'), orderBy('totalPoints', 'desc')), (snap) => {
         const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Apply custom sort: Points > Perfect > Aggregate > Outcome > Alphabetical
-        users.sort((a, b) => {
-            if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-            if ((b.stats?.perfect || 0) !== (a.stats?.perfect || 0)) return (b.stats?.perfect || 0) - (a.stats?.perfect || 0);
-            if ((b.stats?.aggregate || 0) !== (a.stats?.aggregate || 0)) return (b.stats?.aggregate || 0) - (a.stats?.aggregate || 0);
-            if ((b.stats?.outcome || 0) !== (a.stats?.outcome || 0)) return (b.stats?.outcome || 0) - (a.stats?.outcome || 0);
-            return a.name.localeCompare(b.name);
-        });
         setLeaderboard(users);
         setAllUsers(users);
     });
@@ -1343,8 +1367,10 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
   // --- HANDLERS ---
 
   const handleStagePredict = (matchId, key, val) => {
+    // Input validation logic
     const intVal = parseInt(val);
 
+    // If value is empty (user deleting), allow it
     if (val === "") {
         const currentPred = stagedPredictions[matchId] || { home: '', away: '', penaltyWinner: null };
         const newPred = { ...currentPred, [key]: val };
@@ -1352,6 +1378,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
         return;
     }
     
+    // If not a number or out of bounds, ignore the keystroke
     if (isNaN(intVal) || intVal < 0 || intVal > 20) return;
 
     const currentPred = stagedPredictions[matchId] || { home: '', away: '', penaltyWinner: null };
@@ -1380,65 +1407,6 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
         console.error("Error submitting:", error);
         alert("Error saving predictions.");
     } finally { setSubmitting(false); }
-  };
-
-  // --- EXPORT DATA ---
-  const handleExportData = async () => {
-    try {
-      // 1. Fetch ALL needed data
-      const [usersSnap, fixturesSnap, predsSnap] = await Promise.all([
-        getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'users')),
-        getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'fixtures')),
-        getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'predictions'))
-      ]);
-
-      const users = {};
-      usersSnap.forEach(d => users[d.id] = d.data().name);
-
-      const fixtures = {};
-      fixturesSnap.forEach(d => fixtures[d.id] = d.data());
-
-      // 2. Build CSV Content
-      const header = ["MatchID", "Stage", "HomeTeam", "AwayTeam", "Date", "Time", "PlayerName", "PredHome", "PredAway", "PredPens", "Points", "Type"];
-      const rows = [header.join(",")];
-
-      predsSnap.forEach(doc => {
-        const p = doc.data();
-        const match = fixtures[p.matchId];
-        const playerName = users[p.userId] || "Unknown";
-
-        if (match) {
-          const row = [
-            p.matchId,
-            match.stageId,
-            match.teamA,
-            match.teamB,
-            match.date,
-            match.time,
-            playerName,
-            p.prediction.home,
-            p.prediction.away,
-            p.prediction.penaltyWinner || "",
-            p.points || 0,
-            p.type || ""
-          ];
-          rows.push(row.map(cell => `"${cell}"`).join(","));
-        }
-      });
-
-      // 3. Download
-      const csvContent = "data:text/csv;charset=utf-8," + rows.join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "mesh_predictor_backup.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-    } catch (e) {
-      alert("Export failed: " + e.message);
-    }
   };
 
   const activeFixtures = fixtures.filter(f => {
@@ -1474,7 +1442,6 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-2">
-          <button onClick={handleExportData} className={`p-2 rounded-full transition-colors ${isContrast ? 'text-black border-2 border-black hover:bg-gray-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`} title="Export Predictions"><Download size={18} /></button>
           <button onClick={() => setShowHelpModal(true)} className={`p-2 rounded-full transition-colors ${isContrast ? 'text-black border-2 border-black hover:bg-gray-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`} title="Help & Rules"><HelpCircle size={18} /></button>
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <MusicToggle {...musicProps} theme={theme} />
@@ -1524,10 +1491,6 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
              
              <button onClick={() => { setShowHelpModal(true); setIsMobileMenuOpen(false); }} className={`w-full text-left p-2 rounded flex items-center gap-3 ${isContrast ? 'text-black hover:bg-gray-100' : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-gray-700 hover:bg-gray-100'}`}>
                 <HelpCircle size={18} /> Help & Rules
-             </button>
-
-             <button onClick={() => { handleExportData(); setIsMobileMenuOpen(false); }} className={`w-full text-left p-2 rounded flex items-center gap-3 ${isContrast ? 'text-black hover:bg-gray-100' : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-gray-700 hover:bg-gray-100'}`}>
-                <Download size={18} /> Export Predictions
              </button>
 
              <div className={`flex justify-between items-center p-2 rounded border cursor-pointer ${isContrast ? 'border-black hover:bg-gray-100' : 'border-transparent hover:border-slate-700'}`} onClick={() => musicProps.onToggle()}>
@@ -1587,6 +1550,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
            <div className="flex justify-between items-end mb-3 px-1">
             <div>
                 <h2 className={`text-xs font-bold uppercase tracking-wider ${isContrast ? 'text-black' : isDark ? 'text-slate-500' : 'text-gray-500'}`}>Your Predictions</h2>
+                <div className="text-[10px] text-emerald-500 font-bold">Active Matches</div>
             </div>
             <button 
               onClick={() => setShowCompleted(!showCompleted)}
@@ -1653,6 +1617,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
                       </div>
                    </div>
                    
+                   {/* Knockout Penalty Prediction */}
                    {isKnockout && (
                      <div className={`rounded p-3 text-center border ${isContrast ? 'bg-white border-black border-2' : isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-gray-50 border-gray-100'} ${isLocked ? 'opacity-75' : ''}`}>
                         <div className={`text-[10px] uppercase font-bold mb-2 ${isContrast ? 'text-black' : 'text-slate-400'}`}>If Penalties, who wins?</div>
@@ -1675,6 +1640,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
                      </div>
                    )}
 
+                   {/* Actual Result & Points Display (Only if Locked/Completed) */}
                    {isLocked && match.result && (
                       <div className={`mt-4 pt-4 border-t flex justify-between items-center animate-in fade-in slide-in-from-bottom-2 ${isContrast ? 'border-black' : isDark ? 'border-slate-700' : 'border-gray-100'}`}>
                           <div className="text-left">
