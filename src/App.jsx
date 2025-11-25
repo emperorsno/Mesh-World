@@ -26,7 +26,8 @@ import {
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
-import { Activity, ChevronRight, X, Trophy, CheckCircle2, AlertCircle, Lock, LogOut, Mail, User, Key, ArrowLeft, Settings, Plus, Trash2, Calendar, RefreshCw, Shield, Volume2, VolumeX, Eye, EyeOff, Edit2, Camera, Sun, Moon, Users, Filter, Menu, Zap, HelpCircle, FileText, Upload, Download, ClipboardList, Hash, Coins } from 'lucide-react';
+import { Activity, ChevronRight, X, Trophy, CheckCircle2, AlertCircle, Lock, LogOut, Mail, User, Key, ArrowLeft, Settings, Plus, Trash2, Calendar, RefreshCw, Shield, Volume2, VolumeX, Eye, EyeOff, Edit2, Camera, Sun, Moon, Users, Filter, Menu, Zap, HelpCircle, FileText, Upload, Download, ClipboardList, Hash, Coins, Bus, MonitorPlay, TrendingUp, Gamepad2, Cpu } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // --- FIREBASE SETUP ---
 const firebaseConfig = {
@@ -92,6 +93,20 @@ const sortFixturesByDate = (a, b) => {
     return dateA - dateB;
 };
 
+// Helper to generate colors for graph lines
+const getLineColor = (index, theme) => {
+  const isContrast = theme === 'contrast';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
+
+  if (isTron) return ['#06b6d4', '#f472b6', '#a855f7', '#22d3ee', '#fbbf24'][index % 5];
+  if (isMario) return ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7'][index % 5];
+  if (isContrast) return ['#000000', '#e60000', '#0000ff', '#008000', '#800080'][index % 5];
+
+  // Default
+  return ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'][index % 8];
+};
+
 // --- SCORING ENGINE ---
 const calculatePoints = (prediction, result, rules = DEFAULT_SCORING) => {
   if (!prediction || !result) return { points: 0, type: 'Miss' };
@@ -139,7 +154,83 @@ const calculatePoints = (prediction, result, rules = DEFAULT_SCORING) => {
   return { points, type: mainType };
 };
 
+// --- CUSTOM ANIMATION STYLES ---
+const AnimationStyles = () => (
+  <style>{`
+    @keyframes drive-bus {
+      0% { transform: translateX(-100%); }
+      40% { transform: translateX(10%); }
+      50% { transform: translateX(0); }
+      100% { transform: translateX(0); }
+    }
+    .animate-bus-enter {
+      animation: drive-bus 1.5s ease-out forwards;
+    }
+    @keyframes pitch-run {
+      0% { transform: translateX(-100vw) translateY(var(--y-start)); }
+      100% { transform: translateX(100vw) translateY(var(--y-end)); }
+    }
+    .pitch-invader {
+      position: absolute;
+      left: 0;
+      animation: pitch-run var(--duration) linear infinite;
+      font-size: var(--size);
+      z-index: 100;
+    }
+    @keyframes loading {
+      0% { transform: scaleX(0); }
+      50% { transform: scaleX(0.5); }
+      100% { transform: scaleX(1); }
+    }
+  `}</style>
+);
+
 // --- COMPONENTS ---
+
+const PitchInvasion = ({ onClose }) => {
+  const invaders = Array.from({ length: 30 }).map((_, i) => ({
+    id: i,
+    emoji: ['🏃', '🏃‍♂️', '🏃‍♀️', '⚽', '👮‍♂️'][Math.floor(Math.random() * 5)],
+    top: Math.random() * 100 + '%',
+    duration: Math.random() * 3 + 2 + 's',
+    size: Math.random() * 20 + 20 + 'px',
+    yStart: Math.random() * 20 - 10 + 'px',
+    yEnd: Math.random() * 20 - 10 + 'px'
+  }));
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/20 cursor-pointer overflow-hidden" onClick={onClose}>
+       <div className="absolute top-10 left-0 right-0 text-center text-4xl font-black text-white drop-shadow-lg animate-bounce">PITCH INVASION!</div>
+       {invaders.map(inv => (
+         <div 
+            key={inv.id} 
+            className="pitch-invader"
+            style={{
+              top: inv.top,
+              '--duration': inv.duration,
+              '--size': inv.size,
+              '--y-start': inv.yStart,
+              '--y-end': inv.yEnd
+            }}
+         >
+           {inv.emoji}
+         </div>
+       ))}
+    </div>
+  );
+};
+
+const VarOverlay = () => (
+  <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center text-white">
+    <MonitorPlay size={64} className="mb-4 text-emerald-500 animate-pulse" />
+    <h2 className="text-3xl font-black tracking-widest mb-2">VAR CHECK</h2>
+    <p className="text-sm font-mono animate-pulse text-emerald-400">REVIEWING PREDICTION...</p>
+    <div className="mt-8 w-64 h-1 bg-gray-800 rounded overflow-hidden">
+      <div className="h-full bg-emerald-500 w-full animate-[loading_2s_ease-in-out_infinite]" style={{transformOrigin:'left'}}></div>
+    </div>
+  </div>
+);
+
 
 const Avatar = ({ url, name, size = 'md' }) => {
   const sizeClasses = {
@@ -169,13 +260,17 @@ const Avatar = ({ url, name, size = 'md' }) => {
 const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, label, theme }) => {
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   return (
     <div className="space-y-1">
-      {label && <label className={`text-xs font-bold uppercase ml-1 ${isContrast ? 'text-black font-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>{label}</label>}
+      {label && <label className={`text-xs font-bold uppercase ml-1 ${isContrast ? 'text-black font-black' : isTron ? 'text-cyan-400 font-mono' : isMario ? 'text-red-600 font-black tracking-wider' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>{label}</label>}
       <div className="relative group">
         <div className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${
           isContrast ? 'text-black' :
+          isTron ? 'text-cyan-500 group-focus-within:text-cyan-300' :
+          isMario ? 'text-red-500 group-focus-within:text-green-600' :
           isDark ? 'text-slate-500 group-focus-within:text-emerald-400' : 'text-gray-400 group-focus-within:text-emerald-600'
         }`}>
           <Icon size={18} />
@@ -188,6 +283,10 @@ const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, label, them
           className={`w-full border rounded-lg py-3 pl-10 pr-4 focus:outline-none transition-all ${
             isContrast 
               ? 'bg-white border-black text-black border-2 placeholder:text-gray-500 font-bold'
+              : isTron
+                ? 'bg-gray-900 border-cyan-700 text-cyan-100 placeholder:text-cyan-900 focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(6,182,212,0.5)] font-mono'
+              : isMario
+                ? 'bg-white border-yellow-400 border-4 rounded-xl text-gray-900 placeholder:text-gray-400 focus:border-red-500'
               : isDark 
                 ? 'bg-slate-900 border-slate-700 text-white placeholder:text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500' 
                 : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
@@ -201,15 +300,21 @@ const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, label, them
 const MusicToggle = ({ isPlaying, onToggle, theme }) => {
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
   
   return (
     <button 
       onClick={onToggle} 
       className={`p-2 rounded-full transition-all ${
         isPlaying 
-          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+          ? isTron ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
           : isContrast
             ? 'bg-white text-black border-2 border-black hover:bg-gray-200'
+            : isTron
+              ? 'bg-gray-900 text-cyan-700 border border-cyan-900 hover:text-cyan-400'
+            : isMario
+              ? 'bg-yellow-400 text-yellow-900 border-2 border-yellow-600 hover:bg-yellow-300'
             : isDark 
               ? 'bg-slate-800 text-slate-500 border border-slate-700 hover:text-slate-300'
               : 'bg-white text-gray-400 border border-gray-200 hover:text-gray-600'
@@ -224,6 +329,18 @@ const MusicToggle = ({ isPlaying, onToggle, theme }) => {
 const ThemeToggle = ({ theme, onToggle }) => {
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
+
+  const getIcon = () => {
+      if(isContrast) return <Zap size={18} />;
+      if(isTron) return <Cpu size={18} />;
+      if(isMario) return <GamePadIcon />;
+      if(isDark) return <Moon size={18} />;
+      return <Sun size={18} />;
+  };
+  
+  const GamePadIcon = () => <Gamepad2 size={18}/>;
 
   return (
     <button 
@@ -231,23 +348,273 @@ const ThemeToggle = ({ theme, onToggle }) => {
       className={`p-2 rounded-full transition-all ${
         isContrast 
           ? 'bg-white text-black border-2 border-black hover:bg-gray-200'
+          : isTron
+            ? 'bg-gray-900 text-cyan-400 border border-cyan-500 hover:shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+          : isMario
+            ? 'bg-red-500 text-white border-2 border-red-700 hover:bg-red-400'
           : isDark 
             ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-yellow-400' 
             : 'bg-white text-gray-400 border border-gray-200 hover:text-indigo-600'
       }`}
-      title="Cycle Theme (Dark -> Light -> Contrast)"
+      title="Cycle Theme"
     >
-      {isContrast ? <Zap size={18} /> : isDark ? <Moon size={18} /> : <Sun size={18} />}
+      {getIcon()}
     </button>
   );
 };
 
 // --- MODALS ---
 
+const StatsModal = ({ leaderboard, leagues, onClose, theme }) => {
+  const [filter, setFilter] = useState('GLOBAL');
+  const [graphData, setGraphData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const isContrast = theme === 'contrast';
+  const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
+
+  const filteredUsers = filter === 'GLOBAL' 
+    ? leaderboard 
+    : leaderboard.filter(u => {
+        const league = leagues.find(l => l.id === filter);
+        return league && league.members.includes(u.id);
+      });
+
+  useEffect(() => {
+    const generateGraphData = async () => {
+      setLoading(true);
+      const fixturesSnap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'fixtures'), where('status', '==', 'COMPLETED')));
+      const fixtures = fixturesSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort(sortFixturesByDate);
+
+      const predsSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'predictions'));
+      const allPreds = [];
+      predsSnap.forEach(d => allPreds.push(d.data()));
+
+      const dates = [...new Set(fixtures.map(f => f.date))];
+      const sortedDates = dates.sort((a, b) => {
+          const fA = fixtures.find(f => f.date === a);
+          const fB = fixtures.find(f => f.date === b);
+          return sortFixturesByDate(fA, fB);
+      });
+
+      let runningTotals = {};
+      filteredUsers.forEach(u => runningTotals[u.id] = 0);
+
+      const dataPoints = sortedDates.map(date => {
+         const dayFixtures = fixtures.filter(f => f.date === date);
+         dayFixtures.forEach(match => {
+             const matchPreds = allPreds.filter(p => p.matchId === match.id);
+             matchPreds.forEach(p => {
+                 if (runningTotals[p.userId] !== undefined) {
+                     runningTotals[p.userId] += (p.points || 0);
+                 }
+             });
+         });
+         const point = { date };
+         filteredUsers.forEach(u => {
+             point[u.name] = runningTotals[u.id] || 0;
+         });
+         return point;
+      });
+      
+      const startPoint = { date: 'Start' };
+      filteredUsers.forEach(u => startPoint[u.name] = 0);
+
+      setGraphData([startPoint, ...dataPoints]);
+      setLoading(false);
+    };
+
+    generateGraphData();
+  }, [filter, leaderboard]); 
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-2 bg-black/90 backdrop-blur-md">
+      <div className={`w-full max-w-4xl rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+        isContrast ? 'bg-white border-4 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
+        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
+      }`}>
+         <div className={`p-4 border-b flex flex-col gap-3 ${
+          isContrast ? 'bg-white border-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
+          isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'
+        }`}>
+          <div className="flex justify-between items-center">
+            <h3 className={`font-bold flex items-center gap-2 ${
+                isContrast ? 'text-black' : 
+                isTron ? 'text-cyan-400 font-mono tracking-widest' : 
+                isMario ? 'text-white drop-shadow-md font-black' :
+                'text-emerald-500'
+            }`}>
+              <TrendingUp size={18} /> Player Progress
+            </h3>
+            <button onClick={onClose} className={`${isContrast ? 'text-black hover:text-gray-600' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
+          </div>
+
+           <div className="relative">
+              <div className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isContrast ? 'text-black' : isTron ? 'text-cyan-600' : 'text-slate-500'}`}>
+                  <Filter size={14} />
+                </div>
+                <select 
+                  value={filter} 
+                  onChange={(e) => setFilter(e.target.value)}
+                  className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm border appearance-none ${
+                    isContrast ? 'bg-white border-2 border-black text-black font-bold' :
+                    isTron ? 'bg-gray-900 border-cyan-700 text-cyan-400 focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(6,182,212,0.5)] font-mono' :
+                    isMario ? 'bg-white border-4 border-green-600 text-gray-900 font-bold' :
+                    isDark ? 'bg-slate-900 border-slate-600 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
+                  }`}
+                >
+                  <option value="GLOBAL">Global (Top 50)</option>
+                  {leagues.length > 0 && <optgroup label="My Leagues">
+                    {leagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </optgroup>}
+                </select>
+           </div>
+        </div>
+
+        <div className={`flex-1 p-4 ${isContrast ? 'bg-white' : isTron ? 'bg-gray-900' : isMario ? 'bg-sky-100' : isDark ? 'bg-slate-900' : 'bg-white'}`}>
+           {loading ? <div className="flex h-full items-center justify-center text-slate-500">Calculating stats...</div> : (
+             <div className="w-full h-64 md:h-96">
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={graphData}>
+                   <CartesianGrid strokeDasharray="3 3" stroke={isContrast ? '#000' : isTron ? '#155e75' : isDark ? '#334155' : '#e2e8f0'} />
+                   <XAxis 
+                      dataKey="date" 
+                      stroke={isContrast ? '#000' : isTron ? '#06b6d4' : isDark ? '#94a3b8' : '#64748b'} 
+                      style={{ fontSize: '10px', fontWeight: 'bold', fontFamily: isTron ? 'monospace' : 'sans-serif' }}
+                   />
+                   <YAxis 
+                      stroke={isContrast ? '#000' : isTron ? '#06b6d4' : isDark ? '#94a3b8' : '#64748b'}
+                      style={{ fontSize: '10px', fontWeight: 'bold', fontFamily: isTron ? 'monospace' : 'sans-serif' }}
+                   />
+                   <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: isContrast ? '#fff' : isTron ? '#0f172a' : isMario ? '#fff' : isDark ? '#1e293b' : '#fff', 
+                        border: isContrast ? '2px solid #000' : isTron ? '1px solid #06b6d4' : isMario ? '4px solid #facc15' : '1px solid #475569',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        color: isTron ? '#06b6d4' : 'inherit'
+                      }}
+                      itemStyle={{ color: isContrast ? '#000' : isTron ? '#22d3ee' : isDark ? '#fff' : '#000' }}
+                   />
+                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                   {filteredUsers.slice(0, 10).map((user, index) => (
+                     <Line 
+                       key={user.id}
+                       type="monotone" 
+                       dataKey={user.name} 
+                       stroke={getLineColor(index, theme)} 
+                       strokeWidth={isContrast || isMario ? 3 : 2}
+                       dot={{ r: isContrast ? 4 : 3 }}
+                       activeDot={{ r: 6 }}
+                     />
+                   ))}
+                 </LineChart>
+               </ResponsiveContainer>
+               {filteredUsers.length > 10 && <p className="text-center text-[10px] text-slate-500 mt-2">Showing top 10 players for clarity</p>}
+             </div>
+           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MatchPredictionsModal = ({ match, onClose, theme }) => {
+  const [matchPreds, setMatchPreds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const isContrast = theme === 'contrast';
+  const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
+
+  useEffect(() => {
+    const load = async () => {
+      const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'predictions'), where('matchId', '==', match.id));
+      const snap = await getDocs(q);
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      // Sort by points (if completed) or name
+      list.sort((a,b) => (b.points || 0) - (a.points || 0));
+      setMatchPreds(list);
+      setLoading(false);
+    };
+    load();
+  }, [match]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
+      <div className={`w-full max-w-md rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${
+        isContrast ? 'bg-white border-2 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
+        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
+      }`}>
+        <div className={`p-4 flex justify-between items-center border-b ${
+          isContrast ? 'bg-white border-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
+          isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'
+        }`}>
+          <h3 className={`font-bold flex items-center gap-2 ${
+            isContrast ? 'text-black' : 
+            isTron ? 'text-cyan-400 font-mono tracking-widest' :
+            isMario ? 'text-white' :
+            isDark ? 'text-white' : 'text-gray-900'
+          }`}>
+            <Users size={18} /> {match.teamA} vs {match.teamB}
+          </h3>
+          <button onClick={onClose} className={`${isContrast ? 'text-black' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
+        </div>
+        <div className="p-4 overflow-y-auto">
+           {loading ? <div className="text-center py-4 text-slate-500">Loading predictions...</div> : (
+             <div className="space-y-2">
+                {matchPreds.length === 0 && <div className="text-center text-slate-500 italic">No predictions made.</div>}
+                {matchPreds.map((p, idx) => (
+                  <div key={idx} className={`p-2 rounded flex justify-between items-center ${
+                    isContrast ? 'border border-black' : 
+                    isTron ? 'bg-gray-900 border border-cyan-900' :
+                    isMario ? 'bg-white border-2 border-black' :
+                    isDark ? 'bg-slate-800' : 'bg-gray-100'
+                  }`}>
+                    <div className={`font-medium ${
+                      isContrast ? 'text-black' :
+                      isTron ? 'text-cyan-100 font-mono' :
+                      isMario ? 'text-gray-900 font-bold' :
+                      isDark ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {p.userName || 'Unknown'}
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-bold font-mono ${isContrast ? 'text-black' : isTron ? 'text-cyan-400' : isMario ? 'text-blue-600' : 'text-emerald-600'}`}>
+                         {p.prediction.home} - {p.prediction.away}
+                         {p.prediction.penaltyWinner && <span className="text-[10px] ml-1">({p.prediction.penaltyWinner.charAt(0).toUpperCase()})</span>}
+                      </div>
+                      {match.status === 'COMPLETED' && (
+                        <div className={`text-[10px] ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-600' : 'text-slate-500'}`}>{p.points} pts</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+             </div>
+           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HelpModal = ({ onClose, theme }) => {
   const [helpText, setHelpText] = useState('Loading rules...');
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   useEffect(() => {
     const fetchHelp = async () => {
@@ -263,15 +630,35 @@ const HelpModal = ({ onClose, theme }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
-      <div className={`w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className={`p-4 border-b flex justify-between items-center ${isContrast ? 'bg-white border-black' : isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'}`}>
-          <h3 className={`font-bold flex items-center gap-2 ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>
+      <div className={`w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${
+        isContrast ? 'bg-white border-2 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
+        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
+      }`}>
+        <div className={`p-4 border-b flex justify-between items-center ${
+          isContrast ? 'bg-white border-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
+          isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'
+        }`}>
+          <h3 className={`font-bold flex items-center gap-2 ${
+            isContrast ? 'text-black' :
+            isTron ? 'text-cyan-400 font-mono tracking-widest' :
+            isMario ? 'text-white drop-shadow-md' :
+            isDark ? 'text-white' : 'text-gray-900'
+          }`}>
             <HelpCircle size={18} /> Help & Rules
           </h3>
-          <button onClick={onClose} className={`${isContrast ? 'text-black' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
+          <button onClick={onClose} className={`${isContrast ? 'text-black' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
         </div>
         <div className="p-6 overflow-y-auto">
-          <div className={`whitespace-pre-wrap text-sm leading-relaxed ${isContrast ? 'text-black font-medium' : isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+          <div className={`whitespace-pre-wrap text-sm leading-relaxed ${
+            isContrast ? 'text-black font-medium' :
+            isTron ? 'text-cyan-100 font-mono' :
+            isMario ? 'text-gray-900 font-bold' :
+            isDark ? 'text-slate-300' : 'text-gray-700'
+          }`}>
             {helpText}
           </div>
         </div>
@@ -284,8 +671,11 @@ const ProfileModal = ({ user, currentData, onClose, theme }) => {
   const [name, setName] = useState(currentData?.name || user.displayName || '');
   const [avatarUrl, setAvatarUrl] = useState(currentData?.avatarUrl || '');
   const [saving, setSaving] = useState(false);
+  
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   const handleSave = async () => {
     setSaving(true);
@@ -305,16 +695,25 @@ const ProfileModal = ({ user, currentData, onClose, theme }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
       <div className={`w-full max-w-sm rounded-xl border shadow-2xl overflow-hidden ${
         isContrast ? 'bg-white border-2 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
         isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
       }`}>
         <div className={`p-4 border-b flex justify-between items-center ${
           isContrast ? 'bg-white border-black text-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
           isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'
         }`}>
-          <h3 className={`font-bold flex items-center gap-2 ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h3 className={`font-bold flex items-center gap-2 ${
+            isContrast ? 'text-black' : 
+            isTron ? 'text-cyan-400 font-mono' :
+            isMario ? 'text-white drop-shadow-md' :
+            isDark ? 'text-white' : 'text-gray-900'
+          }`}>
             <User size={18} /> Edit Profile
           </h3>
-          <button onClick={onClose} className={`${isContrast ? 'text-black hover:text-gray-600' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
+          <button onClick={onClose} className={`${isContrast ? 'text-black hover:text-gray-600' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
         </div>
         
         <div className="p-6 space-y-4">
@@ -325,10 +724,12 @@ const ProfileModal = ({ user, currentData, onClose, theme }) => {
           </div>
 
           <div className="space-y-2">
-             <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Display Name</label>
+             <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isTron ? 'text-cyan-600 font-mono' : isMario ? 'text-red-600 font-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Display Name</label>
              <input 
                className={`w-full border rounded p-2 ${
                  isContrast ? 'bg-white border-2 border-black text-black font-bold' :
+                 isTron ? 'bg-gray-900 border-cyan-700 text-cyan-100 font-mono' :
+                 isMario ? 'bg-white border-4 border-green-500 text-gray-900 rounded-xl' :
                  isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                }`}
                value={name}
@@ -337,10 +738,12 @@ const ProfileModal = ({ user, currentData, onClose, theme }) => {
           </div>
 
           <div className="space-y-2">
-             <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Avatar Image URL</label>
+             <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isTron ? 'text-cyan-600 font-mono' : isMario ? 'text-red-600 font-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Avatar Image URL</label>
              <input 
                className={`w-full border rounded p-2 text-xs ${
                  isContrast ? 'bg-white border-2 border-black text-black font-bold' :
+                 isTron ? 'bg-gray-900 border-cyan-700 text-cyan-100 font-mono' :
+                 isMario ? 'bg-white border-4 border-green-500 text-gray-900 rounded-xl' :
                  isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                }`}
                value={avatarUrl}
@@ -354,6 +757,8 @@ const ProfileModal = ({ user, currentData, onClose, theme }) => {
             disabled={saving}
             className={`w-full mt-4 font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2 ${
               isContrast ? 'bg-black text-white hover:bg-gray-800 border-2 border-black' :
+              isTron ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-500 hover:bg-cyan-900/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]' :
+              isMario ? 'bg-green-500 text-white border-b-4 border-green-700 hover:translate-y-1 hover:border-b-0 rounded-xl shadow-lg' :
               'bg-emerald-600 hover:bg-emerald-500 text-white'
             }`}
           >
@@ -371,8 +776,11 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
   const [leagueName, setLeagueName] = useState('');
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [loading, setLoading] = useState(false);
+  
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   const handleCreate = async () => {
     if(!leagueName) return;
@@ -414,16 +822,25 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
       <div className={`w-full max-w-md rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${
         isContrast ? 'bg-white border-2 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
         isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
       }`}>
         <div className={`p-4 border-b flex justify-between items-center ${
           isContrast ? 'bg-white border-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
           isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'
         }`}>
-          <h3 className={`font-bold flex items-center gap-2 ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h3 className={`font-bold flex items-center gap-2 ${
+            isContrast ? 'text-black' :
+            isTron ? 'text-cyan-400 font-mono tracking-widest' :
+            isMario ? 'text-white drop-shadow-md' :
+            isDark ? 'text-white' : 'text-gray-900'
+          }`}>
             <Users size={18} /> {view === 'list' ? 'My Leagues' : view === 'create' ? 'New League' : selectedLeague?.name}
           </h3>
-          <button onClick={onClose} className={`${isContrast ? 'text-black' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
+          <button onClick={onClose} className={`${isContrast ? 'text-black' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
         </div>
 
         <div className="p-4 overflow-y-auto">
@@ -432,6 +849,10 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
               <button onClick={() => setView('create')} className={`w-full py-3 border-2 border-dashed rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${
                 isContrast 
                   ? 'border-black text-black hover:bg-black hover:text-white' 
+                  : isTron
+                    ? 'border-cyan-500 text-cyan-400 hover:bg-cyan-900/20 hover:shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                  : isMario
+                    ? 'border-yellow-500 bg-yellow-100 text-yellow-700 border-4 border-dashed'
                   : 'border-slate-500 text-slate-500 hover:bg-slate-800/50 hover:text-emerald-400 hover:border-emerald-400'
               }`}>
                 <Plus size={18} /> Create New League
@@ -440,17 +861,23 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
                 {myLeagues.map(league => (
                   <div key={league.id} className={`p-3 rounded-lg border flex justify-between items-center ${
                     isContrast ? 'bg-white border-black' :
+                    isTron ? 'bg-gray-900 border-cyan-900' :
+                    isMario ? 'bg-white border-4 border-green-500 rounded-xl' :
                     isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'
                   }`}>
                     <div>
-                      <div className={`font-bold ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>{league.name}</div>
-                      <div className={`text-xs ${isContrast ? 'text-black font-bold' : 'text-slate-500'}`}>{league.members.length} members</div>
+                      <div className={`font-bold ${isContrast ? 'text-black' : isTron ? 'text-cyan-100 font-mono' : isMario ? 'text-gray-900 font-black' : isDark ? 'text-white' : 'text-gray-900'}`}>{league.name}</div>
+                      <div className={`text-xs ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-700' : isMario ? 'text-gray-500' : 'text-slate-500'}`}>{league.members.length} members</div>
                     </div>
                     <button 
                       onClick={() => { setSelectedLeague(league); setView('edit'); }}
                       className={`text-xs px-3 py-1.5 rounded border transition-colors ${
                         isContrast 
                           ? 'bg-black text-white border-black hover:bg-gray-800'
+                          : isTron
+                            ? 'bg-cyan-900/20 text-cyan-400 border-cyan-500/50 hover:bg-cyan-500/20'
+                          : isMario
+                            ? 'bg-yellow-400 text-yellow-900 border-yellow-600 border-b-2 hover:mt-[2px] hover:border-b-0'
                           : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500 hover:text-white'
                       }`}
                     >
@@ -458,7 +885,7 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
                     </button>
                   </div>
                 ))}
-                {myLeagues.length === 0 && <div className={`text-center text-sm py-4 ${isContrast ? 'text-black' : 'text-slate-500'}`}>You are not in any leagues yet.</div>}
+                {myLeagues.length === 0 && <div className={`text-center text-sm py-4 ${isContrast ? 'text-black' : isTron ? 'text-cyan-900' : isMario ? 'text-gray-500' : 'text-slate-500'}`}>You are not in any leagues yet.</div>}
               </div>
             </div>
           )}
@@ -466,10 +893,12 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
           {view === 'create' && (
             <div className="space-y-4">
               <div>
-                <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>League Name</label>
+                <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isTron ? 'text-cyan-600 font-mono' : isMario ? 'text-red-600 font-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>League Name</label>
                 <input 
                   className={`w-full border rounded p-2 mt-1 ${
                     isContrast ? 'bg-white border-2 border-black text-black' :
+                    isTron ? 'bg-gray-900 border-cyan-700 text-cyan-100 font-mono' :
+                    isMario ? 'bg-white border-4 border-green-500 rounded-xl text-gray-900' :
                     isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                   }`}
                   value={leagueName}
@@ -478,21 +907,28 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
                 />
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setView('list')} className={`flex-1 py-2 rounded font-bold border ${isContrast ? 'border-black text-black hover:bg-black hover:text-white' : isDark ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-600'}`}>Cancel</button>
-                <button onClick={handleCreate} disabled={loading || !leagueName} className={`flex-1 py-2 rounded font-bold disabled:opacity-50 ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-500 text-white'}`}>Create</button>
+                <button onClick={() => setView('list')} className={`flex-1 py-2 rounded font-bold border ${isContrast ? 'border-black text-black hover:bg-black hover:text-white' : isTron ? 'border-cyan-700 text-cyan-700 hover:text-cyan-400' : isMario ? 'border-gray-300 text-gray-500 hover:bg-gray-100' : isDark ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-600'}`}>Cancel</button>
+                <button onClick={handleCreate} disabled={loading || !leagueName} className={`flex-1 py-2 rounded font-bold disabled:opacity-50 ${
+                  isContrast ? 'bg-black text-white border-2 border-black' :
+                  isTron ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]' :
+                  isMario ? 'bg-green-500 text-white border-b-4 border-green-700 rounded-xl hover:mt-[2px] hover:border-b-0' :
+                  'bg-emerald-500 text-white'
+                }`}>Create</button>
               </div>
             </div>
           )}
 
           {view === 'edit' && selectedLeague && (
             <div className="space-y-4">
-              <button onClick={() => setView('list')} className={`text-xs flex items-center gap-1 ${isContrast ? 'text-black font-bold' : 'text-slate-500 hover:text-emerald-500'}`}><ArrowLeft size={12}/> Back to list</button>
+              <button onClick={() => setView('list')} className={`text-xs flex items-center gap-1 ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-600 hover:text-cyan-400' : 'text-slate-500 hover:text-emerald-500'}`}><ArrowLeft size={12}/> Back to list</button>
               
-              <div className={`p-3 rounded border ${isContrast ? 'bg-white border-black border-2' : isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
-                <label className={`text-xs font-bold uppercase mb-2 block ${isContrast ? 'text-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Add Player</label>
+              <div className={`p-3 rounded border ${isContrast ? 'bg-white border-black border-2' : isTron ? 'bg-gray-900/50 border-cyan-900' : isMario ? 'bg-white border-4 border-green-200 rounded-xl' : isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                <label className={`text-xs font-bold uppercase mb-2 block ${isContrast ? 'text-black' : isTron ? 'text-cyan-600 font-mono' : isMario ? 'text-red-600 font-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Add Player</label>
                 <select 
                   className={`w-full p-2 rounded text-sm border ${
                     isContrast ? 'bg-white border-black text-black font-bold' :
+                    isTron ? 'bg-gray-900 border-cyan-700 text-cyan-100 font-mono' :
+                    isMario ? 'bg-white border-2 border-green-500 text-gray-900' :
                     isDark ? 'bg-slate-900 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                   }`}
                   onChange={(e) => { if(e.target.value) handleAddMember(e.target.value); e.target.value = ""; }}
@@ -505,15 +941,17 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
               </div>
 
               <div className="space-y-2">
-                <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Members ({selectedLeague.members.length})</label>
+                <label className={`text-xs font-bold uppercase ${isContrast ? 'text-black' : isTron ? 'text-cyan-600 font-mono' : isMario ? 'text-red-600 font-black' : isDark ? 'text-slate-400' : 'text-gray-500'}`}>Members ({selectedLeague.members.length})</label>
                 {allUsers.filter(u => selectedLeague.members.includes(u.id)).map(member => (
                   <div key={member.id} className={`flex justify-between items-center p-2 rounded ${
                     isContrast ? 'bg-white border border-black' :
+                    isTron ? 'bg-gray-900 border border-cyan-900' :
+                    isMario ? 'bg-white border-2 border-yellow-400 rounded-lg' :
                     isDark ? 'bg-slate-800' : 'bg-white border border-gray-100'
                   }`}>
                     <div className="flex items-center gap-2">
                       <Avatar url={member.avatarUrl} name={member.name} size="sm" />
-                      <span className={`text-sm ${isContrast ? 'text-black font-bold' : isDark ? 'text-white' : 'text-gray-900'}`}>{member.name}</span>
+                      <span className={`text-sm ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-100 font-mono' : isMario ? 'text-gray-900 font-bold' : isDark ? 'text-white' : 'text-gray-900'}`}>{member.name}</span>
                     </div>
                     {member.id !== user.uid && (
                       <button onClick={() => handleRemoveMember(member.id)} className="text-slate-500 hover:text-red-500 p-1">
@@ -534,8 +972,12 @@ const LeagueManagerModal = ({ user, allUsers, myLeagues, onClose, theme }) => {
 const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }) => {
   const [filter, setFilter] = useState('GLOBAL');
   const [viewMode, setViewMode] = useState('counts'); // 'counts' or 'points'
+  
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
+
   const [scoringRules, setScoringRules] = useState(DEFAULT_SCORING);
 
   // Fetch scoring rules on mount to ensure calculations are accurate
@@ -572,23 +1014,32 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
     <div className="fixed inset-0 z-50 flex items-center justify-center px-2 bg-black/90 backdrop-blur-md">
       <div className={`w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
         isContrast ? 'bg-white border-4 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
         isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
       }`}>
         <div className={`p-4 border-b flex flex-col gap-3 ${
           isContrast ? 'bg-white border-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
           isDark ? 'bg-slate-800 border-slate-800' : 'bg-gray-50 border-gray-100'
         }`}>
           <div className="flex justify-between items-center">
-            <h3 className={`font-bold flex items-center gap-2 ${isContrast ? 'text-black' : 'text-emerald-500'}`}>
+            <h3 className={`font-bold flex items-center gap-2 ${
+                isContrast ? 'text-black' : 
+                isTron ? 'text-cyan-400 font-mono tracking-widest' :
+                isMario ? 'text-white drop-shadow-md' :
+                'text-emerald-500'
+            }`}>
               <Trophy size={18} /> Full Standings
             </h3>
-            <button onClick={onClose} className={`${isContrast ? 'text-black hover:text-gray-600' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
+            <button onClick={onClose} className={`${isContrast ? 'text-black hover:text-gray-600' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><X size={20}/></button>
           </div>
           
           {/* Filters Row */}
           <div className="flex gap-2">
               <div className="relative flex-1">
-                <div className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isContrast ? 'text-black' : 'text-slate-500'}`}>
+                <div className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isContrast ? 'text-black' : isTron ? 'text-cyan-600' : 'text-slate-500'}`}>
                   <Filter size={14} />
                 </div>
                 <select 
@@ -596,6 +1047,8 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
                   onChange={(e) => setFilter(e.target.value)}
                   className={`w-full pl-9 pr-4 py-2 rounded-lg text-sm border appearance-none ${
                     isContrast ? 'bg-white border-2 border-black text-black font-bold' :
+                    isTron ? 'bg-gray-900 border-cyan-700 text-cyan-400 focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(6,182,212,0.5)] font-mono' :
+                    isMario ? 'bg-white border-4 border-green-600 text-gray-900 font-bold' :
                     isDark ? 'bg-slate-900 border-slate-600 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500'
                   }`}
                 >
@@ -612,6 +1065,10 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
                  className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap ${
                     isContrast 
                        ? 'bg-black text-white border-2 border-black' 
+                       : isTron
+                         ? 'bg-cyan-900/20 text-cyan-400 border border-cyan-500 hover:bg-cyan-500/20'
+                       : isMario
+                         ? 'bg-yellow-400 text-yellow-900 border-2 border-yellow-600 hover:bg-yellow-300'
                        : isDark ? 'bg-slate-800 text-emerald-400 border border-slate-600 hover:bg-slate-700' : 'bg-gray-100 text-emerald-600 border border-gray-300 hover:bg-gray-200'
                  }`}
               >
@@ -625,43 +1082,50 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
           <table className="w-full text-left text-xs">
             <thead className={`sticky top-0 z-10 font-bold ${
               isContrast ? 'bg-white text-black border-b-2 border-black' :
+              isTron ? 'bg-gray-950 text-cyan-400 border-b border-cyan-900 font-mono' :
+              isMario ? 'bg-sky-200 text-blue-800 border-b-2 border-white' :
               isDark ? 'bg-slate-800 text-slate-400' : 'bg-gray-100 text-gray-500'
             }`}>
               <tr>
                 <th className="p-3 w-8">#</th>
                 <th className="p-3">Player</th>
-                <th className={`p-3 text-center ${isContrast ? 'text-black' : 'text-emerald-500'}`} title="Exact Score">
+                <th className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-300' : isMario ? 'text-green-600' : 'text-emerald-500'}`} title="Exact Score">
                    <span className="md:hidden">Perf</span><span className="hidden md:inline">Perfect Score</span>
                 </th>
-                <th className={`p-3 text-center ${isContrast ? 'text-black' : 'text-blue-500'}`} title="Correct Goal Diff">
+                <th className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-300' : isMario ? 'text-blue-600' : 'text-blue-500'}`} title="Correct Goal Diff">
                    <span className="md:hidden">Agg</span><span className="hidden md:inline">Correct Diff</span>
                 </th>
-                <th className={`p-3 text-center ${isContrast ? 'text-black' : 'text-yellow-500'}`} title="Correct Outcome">
+                <th className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-300' : isMario ? 'text-yellow-600' : 'text-yellow-500'}`} title="Correct Outcome">
                    <span className="md:hidden">Out</span><span className="hidden md:inline">Correct Outcome</span>
                 </th>
-                <th className={`p-3 text-center ${isContrast ? 'text-black' : 'text-red-500'}`} title="Incorrect">
+                <th className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-900' : isMario ? 'text-red-500' : 'text-red-500'}`} title="Incorrect">
                    <span className="md:hidden">Miss</span><span className="hidden md:inline">Incorrect</span>
                 </th>
-                <th className={`p-3 text-right font-bold text-sm ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>Pts</th>
+                <th className={`p-3 text-right font-bold text-sm ${isContrast ? 'text-black' : isTron ? 'text-white' : isDark ? 'text-white' : 'text-gray-900'}`}>Pts</th>
               </tr>
             </thead>
-            <tbody className={`divide-y ${isContrast ? 'divide-black' : isDark ? 'divide-slate-800' : 'divide-gray-100'}`}>
+            <tbody className={`divide-y ${isContrast ? 'divide-black' : isTron ? 'divide-cyan-900/30' : isMario ? 'divide-white' : isDark ? 'divide-slate-800' : 'divide-gray-100'}`}>
               {filteredLeaderboard.map((user, idx) => (
                 <tr 
                   key={user.id} 
                   onClick={() => onSelectPlayer(user)}
-                  className={`transition-colors cursor-pointer ${isContrast ? 'hover:bg-gray-100' : isDark ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'}`}
+                  className={`transition-colors cursor-pointer ${
+                      isContrast ? 'hover:bg-gray-100' : 
+                      isTron ? 'hover:bg-cyan-900/10 text-cyan-100' :
+                      isMario ? 'hover:bg-white/50 text-gray-900' :
+                      isDark ? 'hover:bg-slate-800/50' : 'hover:bg-gray-50'
+                  }`}
                 >
-                  <td className={`p-3 ${isContrast ? 'text-black font-bold' : 'text-slate-500'}`}>{idx + 1}</td>
-                  <td className={`p-3 font-medium flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'} ${isContrast ? 'text-black font-bold' : ''}`}>
+                  <td className={`p-3 ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-700' : isMario ? 'text-blue-800 font-bold' : 'text-slate-500'}`}>{idx + 1}</td>
+                  <td className={`p-3 font-medium flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'} ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-100 font-mono' : ''}`}>
                     <Avatar url={user.avatarUrl} name={user.name} size="sm" />
                     <span className="whitespace-nowrap">{user.name}</span>
                   </td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{getValue(user, 'perfect')}</td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{getValue(user, 'aggregate')}</td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-400'}`}>{getValue(user, 'outcome')}</td>
-                  <td className={`p-3 text-center ${isContrast ? 'text-black' : 'text-slate-500'}`}>{getValue(user, 'missed')}</td>
-                  <td className={`p-3 text-right font-bold text-sm ${isContrast ? 'text-black' : 'text-emerald-500'}`}>{user.totalPoints}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-500' : isMario ? 'text-green-700' : 'text-slate-400'}`}>{getValue(user, 'perfect')}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-500' : isMario ? 'text-blue-700' : 'text-slate-400'}`}>{getValue(user, 'aggregate')}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-500' : isMario ? 'text-yellow-700' : 'text-slate-400'}`}>{getValue(user, 'outcome')}</td>
+                  <td className={`p-3 text-center ${isContrast ? 'text-black' : isTron ? 'text-cyan-900' : isMario ? 'text-red-400' : 'text-slate-500'}`}>{getValue(user, 'missed')}</td>
+                  <td className={`p-3 text-right font-bold text-sm ${isContrast ? 'text-black' : isTron ? 'text-cyan-400' : 'text-emerald-500'}`}>{user.totalPoints}</td>
                 </tr>
               ))}
               {filteredLeaderboard.length === 0 && (
@@ -669,6 +1133,9 @@ const FullTableModal = ({ leaderboard, leagues, onClose, onSelectPlayer, theme }
               )}
             </tbody>
           </table>
+        </div>
+        <div className={`p-3 border-t text-[10px] flex justify-between ${isContrast ? 'bg-white border-black text-black' : isTron ? 'bg-gray-950 border-cyan-900 text-cyan-700' : isMario ? 'bg-sky-200 border-white text-blue-800' : isDark ? 'bg-slate-800 border-slate-700 text-slate-500' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+            <span>Tap any player to view their predictions</span>
         </div>
       </div>
     </div>
@@ -680,6 +1147,8 @@ const PlayerDetailModal = ({ player, fixtures, onClose, theme }) => {
   const [loading, setLoading] = useState(true);
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   useEffect(() => {
     const fetchPreds = async () => {
@@ -695,16 +1164,26 @@ const PlayerDetailModal = ({ player, fixtures, onClose, theme }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
-      <div className={`w-full max-w-md rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-200'}`}>
-        <div className={`p-4 flex justify-between items-center border-b ${isContrast ? 'bg-white border-black' : isDark ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+      <div className={`w-full max-w-md rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] ${
+        isContrast ? 'bg-white border-2 border-black' :
+        isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]' :
+        isMario ? 'bg-sky-100 border-4 border-yellow-400' :
+        isDark ? 'bg-slate-900 border-slate-600' : 'bg-white border-gray-200'
+      }`}>
+        <div className={`p-4 flex justify-between items-center border-b ${
+          isContrast ? 'bg-white border-black' :
+          isTron ? 'bg-gray-950 border-cyan-900' :
+          isMario ? 'bg-red-600 border-yellow-400 border-b-4' :
+          isDark ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-200'
+        }`}>
           <div className="flex items-center gap-3">
             <Avatar url={player.avatarUrl} name={player.name} size="md" />
             <div>
-              <h3 className={`font-bold text-lg ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>{player.name}</h3>
-              <p className={`${isContrast ? 'text-black font-bold' : 'text-slate-500'} text-xs`}>Prediction History</p>
+              <h3 className={`font-bold text-lg ${isContrast ? 'text-black' : isTron ? 'text-cyan-400 font-mono tracking-widest' : isMario ? 'text-white drop-shadow-md' : isDark ? 'text-white' : 'text-gray-900'}`}>{player.name}</h3>
+              <p className={`${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-700' : isMario ? 'text-white' : 'text-slate-500'} text-xs`}>Prediction History</p>
             </div>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isContrast ? 'text-black hover:bg-gray-200' : isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-gray-200 text-gray-400 hover:text-gray-800'}`}>
+          <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isContrast ? 'text-black hover:bg-gray-200' : isTron ? 'text-cyan-600 hover:text-cyan-400' : isMario ? 'text-white hover:text-yellow-200' : isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-gray-200 text-gray-400 hover:text-gray-800'}`}>
             <X size={20} />
           </button>
         </div>
@@ -718,8 +1197,13 @@ const PlayerDetailModal = ({ player, fixtures, onClose, theme }) => {
                 if (!pred && !isComplete) return null;
 
                 return (
-                  <div key={match.id} className={`rounded-lg p-3 border ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className={`text-xs font-bold uppercase mb-2 flex justify-between ${isContrast ? 'text-black' : 'text-slate-500'}`}>
+                  <div key={match.id} className={`rounded-lg p-3 border ${
+                    isContrast ? 'bg-white border-2 border-black' :
+                    isTron ? 'bg-gray-900 border-cyan-900' :
+                    isMario ? 'bg-white border-4 border-green-500 rounded-xl' :
+                    isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className={`text-xs font-bold uppercase mb-2 flex justify-between ${isContrast ? 'text-black' : isTron ? 'text-cyan-600' : isMario ? 'text-gray-500' : 'text-slate-500'}`}>
                         <span>{match.teamA} vs {match.teamB}</span>
                         <span className="font-mono">{match.date}</span>
                     </div>
@@ -727,8 +1211,8 @@ const PlayerDetailModal = ({ player, fixtures, onClose, theme }) => {
                         <div className="flex flex-col">
                             {pred ? (
                                 <>
-                                  <span className={`font-bold ${isContrast ? 'text-black' : 'text-emerald-500'}`}>Pred: {pred.prediction.home} - {pred.prediction.away}</span>
-                                  {pred.prediction.penaltyWinner && <span className={`text-[10px] ${isContrast ? 'text-black' : 'text-emerald-500/70'}`}>Pens: {pred.prediction.penaltyWinner}</span>}
+                                  <span className={`font-bold ${isContrast ? 'text-black' : isTron ? 'text-cyan-400' : isMario ? 'text-green-600' : 'text-emerald-500'}`}>Pred: {pred.prediction.home} - {pred.prediction.away}</span>
+                                  {pred.prediction.penaltyWinner && <span className={`text-[10px] ${isContrast ? 'text-black' : isTron ? 'text-cyan-700' : 'text-emerald-500/70'}`}>Pens: {pred.prediction.penaltyWinner}</span>}
                                 </>
                             ) : (
                                 <span className="text-slate-400 italic">No Prediction</span>
@@ -736,10 +1220,14 @@ const PlayerDetailModal = ({ player, fixtures, onClose, theme }) => {
                         </div>
                         {isComplete ? (
                             <div className="text-right">
-                                <span className={`font-bold block ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>Result: {match.result?.home} - {match.result?.away}</span>
+                                <span className={`font-bold block ${isContrast ? 'text-black' : isTron ? 'text-cyan-100' : isMario ? 'text-gray-900' : isDark ? 'text-white' : 'text-gray-900'}`}>Result: {match.result?.home} - {match.result?.away}</span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full border ${
                                   isContrast 
                                     ? 'border-black text-black font-bold bg-white'
+                                    : isTron
+                                      ? 'border-cyan-500 text-cyan-400 bg-cyan-900/30'
+                                    : isMario
+                                      ? 'border-yellow-500 bg-yellow-100 text-yellow-800 font-bold'
                                     : pred?.points > 0 ? 'bg-emerald-500/20 text-emerald-600 border-emerald-500/50' : 'bg-red-500/10 text-red-400 border-red-500/20'
                                 }`}>
                                     {pred ? `${pred.points} pts (${pred.type || 'Miss'})` : '0 pts (No Pred)'}
@@ -771,6 +1259,8 @@ const LoginScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
   const [loading, setLoading] = useState(false);
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -793,11 +1283,21 @@ const LoginScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
       </div>
 
       <div className="mb-8 text-center">
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border mx-auto mb-4 shadow-lg ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border mx-auto mb-4 shadow-lg ${
+          isContrast ? 'bg-white border-2 border-black' : 
+          isTron ? 'bg-gray-900 border-cyan-500 shadow-[0_0_20px_cyan]' :
+          isMario ? 'bg-white border-4 border-black' :
+          isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+        }`}>
           <span className="text-3xl">⚽</span>
         </div>
-        <h1 className={`text-2xl font-bold ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>Mesh Predictor</h1>
-        <p className={`${isContrast ? 'text-black font-bold' : 'text-slate-500'} text-sm`}>Sign in to play</p>
+        <h1 className={`text-2xl font-bold ${
+          isContrast ? 'text-black' : 
+          isTron ? 'text-cyan-400 font-mono tracking-widest' :
+          isMario ? 'text-red-600 drop-shadow-md font-black' :
+          isDark ? 'text-white' : 'text-gray-900'
+        }`}>Mesh Predictor</h1>
+        <p className={`${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-700' : isMario ? 'text-gray-500' : 'text-slate-500'} text-sm`}>Sign in to play</p>
       </div>
 
       <form onSubmit={handleLogin} className="space-y-4">
@@ -805,19 +1305,24 @@ const LoginScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
         <AuthInput icon={Lock} type="password" placeholder="Password" value={password} onChange={setPassword} theme={theme} />
         {error && <p className="text-red-500 text-xs bg-red-500/10 p-2 rounded border border-red-500/20">{error}</p>}
         
-        <button disabled={loading} type="submit" className={`w-full font-bold py-3.5 rounded-xl transition-all active:scale-95 mt-4 disabled:opacity-50 ${isContrast ? 'bg-black text-white border-2 border-black hover:bg-gray-800' : 'bg-emerald-500 hover:bg-emerald-400 text-white'}`}>
+        <button disabled={loading} type="submit" className={`w-full font-bold py-3.5 rounded-xl transition-all active:scale-95 mt-4 disabled:opacity-50 ${
+          isContrast ? 'bg-black text-white border-2 border-black hover:bg-gray-800' : 
+          isTron ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-500 hover:shadow-[0_0_20px_cyan] font-mono' :
+          isMario ? 'bg-green-500 text-white border-b-4 border-green-700 hover:translate-y-1 hover:border-b-0' :
+          'bg-emerald-500 hover:bg-emerald-400 text-white'
+        }`}>
           {loading ? 'Signing In...' : 'Sign In'}
         </button>
       </form>
       
       <div className="mt-6 text-center">
-        <p className={`${isContrast ? 'text-black' : 'text-slate-500'} text-sm`}>
-          No account? <button onClick={() => onSwitch('register')} className={`${isContrast ? 'text-black underline font-bold' : 'text-emerald-500 font-bold hover:underline'}`}>Register</button>
+        <p className={`${isContrast ? 'text-black' : isTron ? 'text-cyan-800' : 'text-slate-500'} text-sm`}>
+          No account? <button onClick={() => onSwitch('register')} className={`${isContrast ? 'text-black underline font-bold' : isTron ? 'text-cyan-400' : isMario ? 'text-red-600 font-black' : 'text-emerald-500 font-bold hover:underline'}`}>Register</button>
         </p>
       </div>
       
       <div className="mt-8 text-center">
-        <p className={`text-[10px] ${isContrast ? 'text-black font-bold' : isDark ? 'text-slate-600' : 'text-gray-400'}`}>Version v0.6 - Created by DBG</p>
+        <p className={`text-[10px] ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-900' : isDark ? 'text-slate-600' : 'text-gray-400'}`}>Version v0.8c - Created by DBG</p>
       </div>
     </div>
   );
@@ -831,6 +1336,8 @@ const RegisterScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
   const [loading, setLoading] = useState(false);
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
+  const isTron = theme === 'tron';
+  const isMario = theme === 'mario';
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -861,15 +1368,25 @@ const RegisterScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
         <MusicToggle {...musicProps} theme={theme} />
       </div>
-      <button onClick={() => onSwitch('login')} className={`absolute top-6 left-4 flex items-center gap-1 ${isContrast ? 'text-black font-bold' : 'text-slate-400 hover:text-emerald-500'}`}><ArrowLeft size={18} /> Back</button>
-      <div className="mb-6 mt-8"><h1 className={`text-2xl font-bold ${isContrast ? 'text-black' : isDark ? 'text-white' : 'text-gray-900'}`}>Create Account</h1></div>
+      <button onClick={() => onSwitch('login')} className={`absolute top-6 left-4 flex items-center gap-1 ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-600' : 'text-slate-400 hover:text-emerald-500'}`}><ArrowLeft size={18} /> Back</button>
+      <div className="mb-6 mt-8"><h1 className={`text-2xl font-bold ${
+        isContrast ? 'text-black' : 
+        isTron ? 'text-cyan-400 font-mono tracking-widest' :
+        isMario ? 'text-red-600 font-black drop-shadow-sm' :
+        isDark ? 'text-white' : 'text-gray-900'
+      }`}>Create Account</h1></div>
       
       <form onSubmit={handleRegister} className="space-y-4">
         <AuthInput icon={User} type="text" placeholder="Display Name" value={name} onChange={setName} theme={theme} />
         <AuthInput icon={Mail} type="email" placeholder="Email" value={email} onChange={setEmail} theme={theme} />
         <AuthInput icon={Lock} type="password" placeholder="Password" value={password} onChange={setPassword} theme={theme} />
         {error && <p className="text-red-500 text-xs bg-red-500/10 p-2 rounded border border-red-500/20">{error}</p>}
-        <button disabled={loading} type="submit" className={`w-full font-bold py-3.5 rounded-xl mt-2 ${isContrast ? 'bg-black text-white border-2 border-black hover:bg-gray-800' : 'bg-emerald-500 hover:bg-emerald-400 text-white'}`}>
+        <button disabled={loading} type="submit" className={`w-full font-bold py-3.5 rounded-xl mt-2 ${
+          isContrast ? 'bg-black text-white border-2 border-black hover:bg-gray-800' : 
+          isTron ? 'bg-cyan-900/50 text-cyan-400 border border-cyan-500 hover:shadow-[0_0_20px_cyan] font-mono' :
+          isMario ? 'bg-green-500 text-white border-b-4 border-green-700 hover:translate-y-1 hover:border-b-0' :
+          'bg-emerald-500 hover:bg-emerald-400 text-white'
+        }`}>
           {loading ? 'Creating...' : 'Create Account'}
         </button>
       </form>
@@ -877,19 +1394,22 @@ const RegisterScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
   );
 };
 
-const AdminDashboard = ({ fixtures, onClose, theme }) => {
+const AdminDashboard = ({ fixtures, onClose, theme, allUsers }) => {
   const [selectedStageId, setSelectedStageId] = useState('md1'); // Default to md1
   const [newMatch, setNewMatch] = useState({ teamA: '', teamB: '', date: '', time: '' });
   const [processing, setProcessing] = useState(false);
   const [scoringRules, setScoringRules] = useState(DEFAULT_SCORING);
   const [showRules, setShowRules] = useState(false);
-  const [activeTab, setActiveTab] = useState('fixtures'); // 'fixtures' or 'leagues' or 'content'
+  const [activeTab, setActiveTab] = useState('fixtures'); // 'fixtures' or 'leagues' or 'content' or 'admins'
   const [leagues, setLeagues] = useState([]);
   const [importText, setImportText] = useState('');
   const [resultsText, setResultsText] = useState('');
   const [parsedMatches, setParsedMatches] = useState([]);
   const [parsedResults, setParsedResults] = useState([]);
   const [helpText, setHelpText] = useState('');
+  const [adminList, setAdminList] = useState([]); // Dynamic admin list
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
 
@@ -901,6 +1421,9 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
 
       const helpSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'help'));
       if (helpSnap.exists()) setHelpText(helpSnap.data().text || '');
+
+      const adminsSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admins'));
+      if (adminsSnap.exists()) setAdminList(adminsSnap.data().list || []);
     };
     loadRules();
 
@@ -909,6 +1432,21 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
     });
     return () => unsubLeagues();
   }, []);
+
+  // --- ADMIN MANAGEMENT ---
+  const handleAddAdmin = async () => {
+    if (!newAdminEmail || !newAdminEmail.includes('@')) return alert("Invalid Email");
+    const newList = [...adminList, newAdminEmail];
+    setAdminList(newList);
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admins'), { list: newList });
+    setNewAdminEmail('');
+  };
+
+  const handleRemoveAdmin = async (emailToRemove) => {
+    const newList = adminList.filter(e => e !== emailToRemove);
+    setAdminList(newList);
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admins'), { list: newList });
+  };
 
   const handleSaveRules = async () => {
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'scoring'), scoringRules);
@@ -1042,6 +1580,7 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
       const usersSnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'users'));
       const userMap = {};
       usersSnapshot.forEach(doc => {
+         // Initialize with 0 points
          userMap[doc.id] = { 
            ref: doc.ref, 
            data: { ...doc.data(), totalPoints: 0, stats: { perfect: 0, aggregate: 0, outcome: 0, missed: 0 } } 
@@ -1137,6 +1676,9 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
 
   const activeFixtures = fixtures.filter(f => f.stageId === selectedStageId);
 
+  // Admin user selection
+  const availableUsersForAdmin = allUsers ? allUsers.filter(u => !adminList.includes(u.email)) : [];
+
   return (
     <div className="pb-20">
       <header className={`p-4 flex justify-between items-center sticky top-0 z-20 border-b ${isContrast ? 'bg-white border-black border-b-2' : isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
@@ -1155,6 +1697,7 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
           <button onClick={() => setActiveTab('fixtures')} className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm whitespace-nowrap ${activeTab === 'fixtures' ? (isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-500 text-white') : (isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white border border-gray-300 text-gray-600')}`}>Fixtures</button>
           <button onClick={() => setActiveTab('leagues')} className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm whitespace-nowrap ${activeTab === 'leagues' ? (isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-500 text-white') : (isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white border border-gray-300 text-gray-600')}`}>Leagues</button>
           <button onClick={() => setActiveTab('content')} className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm whitespace-nowrap ${activeTab === 'content' ? (isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-500 text-white') : (isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white border border-gray-300 text-gray-600')}`}>App Content</button>
+          <button onClick={() => setActiveTab('admins')} className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm whitespace-nowrap ${activeTab === 'admins' ? (isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-500 text-white') : (isContrast ? 'bg-white text-black border-2 border-black' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white border border-gray-300 text-gray-600')}`}>Admins</button>
         </div>
 
         {activeTab === 'fixtures' && (
@@ -1273,6 +1816,42 @@ const AdminDashboard = ({ fixtures, onClose, theme }) => {
               </div>
            </div>
         )}
+
+        {activeTab === 'admins' && (
+           <div className={`p-4 rounded-xl border space-y-4 ${isContrast ? 'bg-white border-2 border-black' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+               <h4 className={`text-xs font-bold uppercase mb-3 flex items-center gap-2 ${isContrast ? 'text-black' : 'text-emerald-500'}`}><Shield size={14}/> Manage Admins</h4>
+               
+               <div className="flex gap-2 mb-4">
+                 <select 
+                    className={`flex-1 border rounded p-2 text-sm ${isContrast ? 'bg-white border-black text-black border-2' : isDark ? 'bg-slate-900 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                 >
+                    <option value="">Select a user to add...</option>
+                    {availableUsersForAdmin.map(u => (
+                        <option key={u.id} value={u.email}>{u.name} ({u.email})</option>
+                    ))}
+                 </select>
+                 <button onClick={handleAddAdmin} className={`px-4 rounded font-bold text-xs ${isContrast ? 'bg-black text-white border-2 border-black' : 'bg-emerald-600 text-white'}`}>Add</button>
+               </div>
+
+               <div className="space-y-2">
+                 {/* Hardcoded Super Admin */}
+                 <div className={`p-2 rounded flex justify-between items-center ${isContrast ? 'bg-gray-100 border border-black' : isDark ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                    <span className={`text-sm ${isContrast ? 'text-black font-bold' : isDark ? 'text-white' : 'text-gray-900'}`}>{ADMIN_EMAIL} <span className="text-[10px] opacity-60">(Owner)</span></span>
+                    <Shield size={14} className="text-emerald-500" />
+                 </div>
+                 
+                 {/* Additional Admins */}
+                 {adminList.filter(e => e !== ADMIN_EMAIL).map(email => (
+                    <div key={email} className={`p-2 rounded flex justify-between items-center ${isContrast ? 'border border-black' : isDark ? 'bg-slate-800' : 'bg-white border border-gray-200'}`}>
+                      <span className={`text-sm ${isContrast ? 'text-black' : isDark ? 'text-slate-300' : 'text-gray-700'}`}>{email}</span>
+                      <button onClick={() => handleRemoveAdmin(email)} className="text-red-500 hover:bg-red-500/10 p-1 rounded"><Trash2 size={14} /></button>
+                    </div>
+                 ))}
+               </div>
+           </div>
+        )}
       </div>
     </div>
   );
@@ -1295,6 +1874,12 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
   const [showCompleted, setShowCompleted] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
+  const [showStatsModal, setShowStatsModal] = useState(false); // NEW State for graph modal
+  
+  // NEW STATES for features
+  const [adminList, setAdminList] = useState([ADMIN_EMAIL]);
+  const [viewMatchPredictions, setViewMatchPredictions] = useState(null);
+
   const isContrast = theme === 'contrast';
   const isDark = theme === 'dark';
 
@@ -1337,7 +1922,14 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
         setStagedPredictions(preds); 
     });
 
-    return () => { unsubFixtures(); unsubUsers(); unsubPreds(); unsubLeagues(); };
+    // NEW: Fetch Admin List
+    const unsubAdmins = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'admins'), (docSnap) => {
+      if (docSnap.exists()) {
+        setAdminList(docSnap.data().list || [ADMIN_EMAIL]);
+      }
+    });
+
+    return () => { unsubFixtures(); unsubUsers(); unsubPreds(); unsubLeagues(); unsubAdmins(); };
   }, [user]);
 
   // --- HANDLERS ---
@@ -1458,10 +2050,12 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
       return JSON.stringify(s) !== JSON.stringify(d);
   });
 
-  if (isAdminMode) return <AdminDashboard fixtures={fixtures} onClose={() => setIsAdminMode(false)} theme={theme} />;
+  // Updated Admin Check
+  const isAdmin = adminList.includes(user.email) || user.email === ADMIN_EMAIL;
+
+  if (isAdminMode) return <AdminDashboard fixtures={fixtures} onClose={() => setIsAdminMode(false)} theme={theme} allUsers={allUsers} />;
 
   const myStats = leaderboard.find(u => u.email === user.email);
-  const isAdmin = user.email === ADMIN_EMAIL;
   const myLeagues = leagues.filter(l => l.members.includes(user.uid));
 
   return (
@@ -1558,9 +2152,14 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
         <section>
              <div className="flex justify-between items-end mb-3 px-1">
                 <h2 className={`text-xs font-bold uppercase tracking-wider ${isContrast ? 'text-black' : isDark ? 'text-slate-500' : 'text-gray-500'}`}>Leaderboard</h2>
-                <button onClick={() => setShowFullTable(true)} className={`text-xs font-bold flex items-center gap-1 ${isContrast ? 'text-black hover:underline' : 'text-emerald-500 hover:text-emerald-400'}`}>
-                    View Full Table <ChevronRight size={12} />
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowStatsModal(true)} className={`text-xs font-bold flex items-center gap-1 ${isContrast ? 'text-black hover:underline' : 'text-blue-500 hover:text-blue-400'}`}>
+                      <TrendingUp size={12} /> View Graph
+                  </button>
+                  <button onClick={() => setShowFullTable(true)} className={`text-xs font-bold flex items-center gap-1 ${isContrast ? 'text-black hover:underline' : 'text-emerald-500 hover:text-emerald-400'}`}>
+                      View Full Table <ChevronRight size={12} />
+                  </button>
+                </div>
             </div>
             <div className={`rounded-xl border overflow-hidden ${isContrast ? 'bg-white border-black border-2' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                 {leaderboard.slice(0, 5).map((player, idx) => (
@@ -1616,6 +2215,15 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
                  }`}>
                     <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${isContrast ? 'bg-black text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-600'}`}>{STAGES.find(s=>s.id===match.stageId)?.name.replace('Group Stage - ', '')}</span>
                     <div className="flex items-center gap-2">
+                         {/* Locked View Predictions Button */}
+                         {isLocked && (
+                           <button 
+                             onClick={() => setViewMatchPredictions(match)}
+                             className={`pointer-events-auto relative z-20 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded border transition-colors ${isContrast ? 'bg-white text-black border-black hover:bg-gray-200' : isDark ? 'bg-slate-800 text-emerald-400 border-slate-600 hover:bg-slate-700' : 'bg-white text-emerald-600 border-gray-300 hover:bg-gray-100'}`}
+                           >
+                             <Eye size={12} /> View Predictions
+                           </button>
+                         )}
                          {isLocked && <Lock size={12} className="text-red-500" />}
                          <span className={`text-xs font-mono ${isContrast ? 'text-black font-bold' : 'text-slate-500'}`}>{match.date} {match.time}</span>
                     </div>
@@ -1627,13 +2235,14 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
                           <input 
                               type="number" 
                               disabled={isLocked}
-                              className={`w-12 h-12 border rounded-lg text-center text-xl font-bold outline-none ${
+                              className={`w-12 h-12 border rounded-lg text-center text-xl font-bold outline-none disabled:opacity-100 ${
                                 isLocked 
                                   ? (isContrast ? 'bg-white border-black text-black' : isDark ? 'bg-slate-900 border-slate-800 text-slate-500' : 'bg-gray-100 border-gray-200 text-gray-400') 
                                   : (isContrast ? 'bg-white border-black text-black focus:bg-yellow-100 border-2' : isDark ? 'bg-slate-900 border-slate-600 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500')
                               }`}
                               value={stagedPredictions[match.id]?.home || ''} 
                               onChange={e => handleStagePredict(match.id, 'home', e.target.value)} 
+                              style={isLocked && isContrast ? { WebkitTextFillColor: 'black', opacity: 1 } : {}}
                           />
                       </div>
                       <span className={`${isContrast ? 'text-black font-bold' : 'text-slate-500'}`}>:</span>
@@ -1642,13 +2251,14 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
                           <input 
                               type="number" 
                               disabled={isLocked}
-                              className={`w-12 h-12 border rounded-lg text-center text-xl font-bold outline-none ${
+                              className={`w-12 h-12 border rounded-lg text-center text-xl font-bold outline-none disabled:opacity-100 ${
                                 isLocked 
                                   ? (isContrast ? 'bg-white border-black text-black' : isDark ? 'bg-slate-900 border-slate-800 text-slate-500' : 'bg-gray-100 border-gray-200 text-gray-400') 
                                   : (isContrast ? 'bg-white border-black text-black focus:bg-yellow-100 border-2' : isDark ? 'bg-slate-900 border-slate-600 text-white focus:border-emerald-500' : 'bg-white border-gray-300 text-gray-900 focus:border-emerald-500')
                               }`}
                               value={stagedPredictions[match.id]?.away || ''} 
                               onChange={e => handleStagePredict(match.id, 'away', e.target.value)} 
+                              style={isLocked && isContrast ? { WebkitTextFillColor: 'black', opacity: 1 } : {}}
                            />
                       </div>
                    </div>
@@ -1725,6 +2335,8 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
       {selectedPlayer && <PlayerDetailModal player={selectedPlayer} fixtures={fixtures} onClose={() => setSelectedPlayer(null)} theme={theme} />}
       {showProfileModal && <ProfileModal user={user} currentData={myStats} onClose={() => setShowProfileModal(false)} theme={theme} />}
       {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} theme={theme} />}
+      {viewMatchPredictions && <MatchPredictionsModal match={viewMatchPredictions} onClose={() => setViewMatchPredictions(null)} theme={theme} />}
+      {showStatsModal && <StatsModal leaderboard={leaderboard} leagues={myLeagues} onClose={() => setShowStatsModal(false)} theme={theme} />}
     </div>
   );
 };
