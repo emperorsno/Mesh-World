@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "mesh-predictor-2026"
-  }
+  },
+  "targets": {
+    "mesh-predictor-2026": {
+      "hosting": {
+        "app": [
+          "mesh-predictor-2026"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
