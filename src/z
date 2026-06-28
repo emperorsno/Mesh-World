@@ -1335,7 +1335,7 @@ const LoginScreen = ({ onSwitch, musicProps, theme, toggleTheme }) => {
       </div>
 
       <div className="mt-8 text-center">
-        <p className={`text-[10px] ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-900' : isDark ? 'text-slate-600' : 'text-gray-400'}`}>Version v1.3c - Created by DBG</p>
+        <p className={`text-[10px] ${isContrast ? 'text-black font-bold' : isTron ? 'text-cyan-900' : isDark ? 'text-slate-600' : 'text-gray-400'}`}>Version v0.8c - Created by DBG</p>
       </div>
     </div>
   );
@@ -1957,7 +1957,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
 
     if (val === "") {
       const currentPred = stagedPredictions[matchId] || { home: '', away: '', penaltyWinner: null };
-      const newPred = { ...currentPred, [key]: val, penaltyWinner: null };
+      const newPred = { ...currentPred, [key]: val };
       setStagedPredictions(prev => ({ ...prev, [matchId]: newPred }));
       return;
     }
@@ -1965,14 +1965,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
     if (isNaN(intVal) || intVal < 0 || intVal > 20) return;
 
     const currentPred = stagedPredictions[matchId] || { home: '', away: '', penaltyWinner: null };
-    const newHome = key === 'home' ? val : currentPred.home;
-    const newAway = key === 'away' ? val : currentPred.away;
-    const isNewDraw = newHome !== '' && newAway !== '' && parseInt(newHome) === parseInt(newAway);
-    const newPred = {
-      ...currentPred,
-      [key]: val,
-      penaltyWinner: isNewDraw ? currentPred.penaltyWinner : null
-    };
+    const newPred = { ...currentPred, [key]: val };
     setStagedPredictions(prev => ({ ...prev, [matchId]: newPred }));
   };
 
@@ -2227,9 +2220,6 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
               const pastDeadline = isPastDeadline(match.date);
               const isLocked = match.status === 'COMPLETED' || match.result || pastDeadline;
               const myPred = myPredictions[match.id];
-              const predHome = stagedPredictions[match.id]?.home;
-              const predAway = stagedPredictions[match.id]?.away;
-              const isDraw = predHome !== undefined && predAway !== undefined && predHome !== '' && predAway !== '' && parseInt(predHome) === parseInt(predAway);
 
               return (
                 <div key={match.id} className={`rounded-xl overflow-hidden border shadow-lg relative ${isContrast ? 'bg-white border-black border-2' : isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} ${isLocked ? 'opacity-90' : ''}`}>
@@ -2289,20 +2279,20 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
                     </div>
 
                     {isKnockout && (
-                      <div className={`rounded p-3 text-center border transition-all ${isContrast ? 'bg-white border-black border-2' : isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-gray-50 border-gray-100'} ${isLocked ? 'opacity-75' : ''} ${!isDraw ? 'opacity-40' : ''}`}>
-                        <div className={`text-[10px] uppercase font-bold mb-2 transition-all ${isContrast ? 'text-black' : 'text-slate-400'} ${!isDraw ? 'opacity-60' : ''}`}>If Penalties, who wins?</div>
+                      <div className={`rounded p-3 text-center border ${isContrast ? 'bg-white border-black border-2' : isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-gray-50 border-gray-100'} ${isLocked ? 'opacity-75' : ''}`}>
+                        <div className={`text-[10px] uppercase font-bold mb-2 ${isContrast ? 'text-black' : 'text-slate-400'}`}>If Penalties, who wins?</div>
                         <div className="flex justify-center gap-2">
                           <button
-                            disabled={isLocked || !isDraw}
+                            disabled={isLocked}
                             onClick={() => handleStagePredict(match.id, 'penaltyWinner', 'home')}
-                            className={`text-xs px-3 py-1.5 rounded transition-all ${stagedPredictions[match.id]?.penaltyWinner === 'home' ? (isContrast ? 'bg-black text-white font-bold' : 'bg-emerald-500 text-white font-bold') : (isContrast ? 'bg-white text-black border border-black hover:bg-gray-200' : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50')} disabled:opacity-50`}
+                            className={`text-xs px-3 py-1.5 rounded transition-all ${stagedPredictions[match.id]?.penaltyWinner === 'home' ? (isContrast ? 'bg-black text-white font-bold' : 'bg-emerald-500 text-white font-bold') : (isContrast ? 'bg-white text-black border border-black hover:bg-gray-200' : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50')}`}
                           >
                             {match.teamA}
                           </button>
                           <button
-                            disabled={isLocked || !isDraw}
+                            disabled={isLocked}
                             onClick={() => handleStagePredict(match.id, 'penaltyWinner', 'away')}
-                            className={`text-xs px-3 py-1.5 rounded transition-all ${stagedPredictions[match.id]?.penaltyWinner === 'away' ? (isContrast ? 'bg-black text-white font-bold' : 'bg-emerald-500 text-white font-bold') : (isContrast ? 'bg-white text-black border border-black hover:bg-gray-200' : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50')} disabled:opacity-50`}
+                            className={`text-xs px-3 py-1.5 rounded transition-all ${stagedPredictions[match.id]?.penaltyWinner === 'away' ? (isContrast ? 'bg-black text-white font-bold' : 'bg-emerald-500 text-white font-bold') : (isContrast ? 'bg-white text-black border border-black hover:bg-gray-200' : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50')}`}
                           >
                             {match.teamB}
                           </button>
@@ -2352,7 +2342,7 @@ const Dashboard = ({ user, onLogout, musicProps, theme, toggleTheme }) => {
         </section>
 
         <div className="text-center py-4">
-          <p className={`text-[10px] ${isContrast ? 'text-black' : isDark ? 'text-slate-600' : 'text-gray-400'}`}>Stable Release Version v1.3 - Created by DBG</p>
+          <p className={`text-[10px] ${isContrast ? 'text-black' : isDark ? 'text-slate-600' : 'text-gray-400'}`}>Stable Release Version v1.2 - Created by DBG</p>
         </div>
       </div>
 
